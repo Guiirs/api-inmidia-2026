@@ -5,7 +5,7 @@ import User from '@modules/users/User';
 import AppError from '@shared/container/AppError';
 import logger from '@shared/container/logger';
 import pdfService from '@shared/container/pdf.service';
-import piGen from '../../../src/PISystemGen/generator';
+import piGen from '../../PISystemGen/generator';
 import * as XlsxPopulate from 'xlsx-populate';
 import * as path from 'path';
 import * as fs from 'fs/promises';
