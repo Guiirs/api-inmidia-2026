@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "dist/shared/infra/http/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "start": "cross-env NODE_ENV=production node dist/shared/infra/http/server.js",
     "dev": "cross-env NODE_ENV=development nodemon --exec ts-node src/shared/infra/http/server.ts",
     "dev:redis": "powershell -ExecutionPolicy Bypass -File ./start-with-redis.ps1",
@@ -81,6 +81,7 @@
     "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"
   }
