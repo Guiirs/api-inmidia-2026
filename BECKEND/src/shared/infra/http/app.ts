@@ -25,6 +25,11 @@ dotenv.config();
 // Initialize Express app
 const app: Application = express();
 
+// Railway/Render/proxies: required for req.ip and express-rate-limit behind reverse proxy
+if (config.nodeEnv === 'production' || process.env.RAILWAY_ENVIRONMENT) {
+  app.set('trust proxy', 1);
+}
+
 // --- Essential Middlewares ---
 app.use(helmet()); // Security headers
 
