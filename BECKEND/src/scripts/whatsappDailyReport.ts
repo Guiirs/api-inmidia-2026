@@ -41,11 +41,11 @@ export function scheduleWhatsAppReports(): void {
             logger.error(`[WhatsApp Cron] ❌ Erro ao enviar relatório: ${err.message}`);
         }
     }, {
-        timezone: process.env.TZ || 'Europe/Lisbon'
+        timezone: process.env.APP_TIMEZONE || process.env.TZ || 'Europe/Lisbon'
     });
 
     logger.info('[WhatsApp Cron] ✅ Cron job de relatórios WhatsApp configurado!');
-    logger.info(`[WhatsApp Cron] Próximo envio: ${reportHour} (${process.env.TZ || 'Europe/Lisbon'})`);
+    logger.info(`[WhatsApp Cron] Próximo envio: ${reportHour} (${process.env.APP_TIMEZONE || process.env.TZ || 'Europe/Lisbon'})`);
 }
 
 /**
