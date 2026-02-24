@@ -39,10 +39,44 @@ app.use('/api', globalRateLimiter);
 // Metrics middleware (must be after rate limiting but before routes)
 app.use(metricsMiddleware);
 
+const normalizeOrigin = (origin: string) => origin.trim().replace(/\/+$/, '');
+const configuredCorsOrigins = (config.corsOrigin || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const defaultDevOrigins = ['http://localhost:5173', 'http://localhost:4173'];
+const allowedOrigins = Array.from(
+  new Set(
+    [...configuredCorsOrigins, ...(config.nodeEnv !== 'production' ? defaultDevOrigins : [])]
+      .map(normalizeOrigin)
+  )
+);
+
 // CORS configuration
 app.use(
   cors({
-    origin: config.corsOrigin && config.corsOrigin !== '*' ? config.corsOrigin : 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Permite requests sem Origin (curl, health checks internos, Railway probes)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (config.corsOrigin === '*') {
+        callback(null, true);
+        return;
+      }
+
+      const requestOrigin = normalizeOrigin(origin);
+      if (allowedOrigins.includes(requestOrigin)) {
+        callback(null, true);
+        return;
+      }
+
+      logger.warn(`[CORS] Origem bloqueada: ${origin}. Permitidas: ${allowedOrigins.join(', ')}`);
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
