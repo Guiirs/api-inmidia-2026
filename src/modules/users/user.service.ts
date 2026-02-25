@@ -47,6 +47,11 @@ interface AuditData {
 class UserService {
     constructor() {}
 
+    private isAdminRole(userRole: string): boolean {
+        const normalizedRole = String(userRole || '').trim().toLowerCase();
+        return normalizedRole === 'admin' || normalizedRole === 'superadmin';
+    }
+
     /**
      * Obtém os dados do perfil de um utilizador.
      */
@@ -147,7 +152,7 @@ class UserService {
     async getEmpresaProfile(empresa_id: string, userRole: string): Promise<EmpresaProfile> {
         logger.info(`[UserService] Utilizador (Role: ${userRole}) buscando perfil da empresa ID: ${empresa_id}.`);
 
-        if (userRole !== 'admin') {
+        if (!this.isAdminRole(userRole)) {
             throw new AppError('Apenas administradores podem aceder aos detalhes da empresa.', 403);
         }
 
@@ -182,7 +187,7 @@ class UserService {
     ): Promise<RegenerateApiKeyResult> {
         logger.info(`[UserService] Utilizador ${userId} (Role: ${userRole}) tentando regenerar API Key para empresa ${empresaId}.`);
 
-        if (userRole !== 'admin') {
+        if (!this.isAdminRole(userRole)) {
             throw new AppError('Apenas administradores podem regenerar a chave de API.', 403);
         }
 

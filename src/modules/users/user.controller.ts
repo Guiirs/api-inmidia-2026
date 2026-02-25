@@ -25,7 +25,10 @@ export class UserController {
     try {
       const userProfile = await this.userService.getProfile(userId);
       logger.info(`[UserController] Perfil do utilizador ID ${userId} encontrado com sucesso.`);
-      res.status(200).json(userProfile);
+      res.status(200).json({
+        success: true,
+        data: userProfile
+      });
     } catch (error: unknown) {
       const err = error as Error;
       logger.error(`[UserController] Erro ao chamar userService.getProfile (ID: ${userId}): ${err.message}`);
@@ -53,8 +56,11 @@ export class UserController {
 
       logger.info(`[UserController] Perfil do utilizador ID ${userId} atualizado com sucesso.`);
       res.status(200).json({
+        success: true,
         message: 'Dados do utilizador atualizados com sucesso.',
-        user: updatedUser
+        data: {
+          user: updatedUser
+        }
       });
     } catch (error: unknown) {
       const err = error as Error;

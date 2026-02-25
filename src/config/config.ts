@@ -1,6 +1,31 @@
+import fs from 'fs';
+import path from 'path';
 import dotenv from 'dotenv';
 
-dotenv.config();
+function loadEnvFiles(): void {
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const projectRoot = path.resolve(__dirname, '../..');
+
+  // Base -> env-specific -> local -> env-specific local (highest priority)
+  const envFiles = [
+    '.env',
+    `.env.${nodeEnv}`,
+    '.env.local',
+    `.env.${nodeEnv}.local`,
+  ];
+
+  for (const envFile of envFiles) {
+    const envPath = path.join(projectRoot, envFile);
+    if (!fs.existsSync(envPath)) continue;
+
+    dotenv.config({
+      path: envPath,
+      override: true,
+    });
+  }
+}
+
+loadEnvFiles();
 
 interface IStorageConfig {
   endpoint?: string;
@@ -25,12 +50,12 @@ interface IConfig {
 
 // Validate critical environment variables
 if (!process.env.JWT_SECRET) {
-  console.error('FATAL ERROR: JWT_SECRET is not defined in .env file');
+  console.error('FATAL ERROR: JWT_SECRET is not defined in env files');
   process.exit(1);
 }
 
 if (!process.env.MONGODB_URI) {
-  console.error('FATAL ERROR: MONGODB_URI is not defined in .env file');
+  console.error('FATAL ERROR: MONGODB_URI is not defined in env files');
   process.exit(1);
 }
 

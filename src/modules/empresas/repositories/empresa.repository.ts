@@ -159,7 +159,7 @@ export class EmpresaRepository implements IEmpresaRepository {
     try {
       const empresa = await this.model
         .findById(id)
-        .select('apiKey')
+        .select('apiKey api_key_prefix')
         .lean()
         .exec();
 
@@ -167,13 +167,15 @@ export class EmpresaRepository implements IEmpresaRepository {
         return Result.fail(new EmpresaNotFoundError(id));
       }
 
-      if (!empresa.apiKey) {
+      const apiKeyPrefix = (empresa as any).api_key_prefix || (empresa as any).apiKey;
+
+      if (!apiKeyPrefix) {
         return Result.fail(
           new NotFoundError('API Key não encontrada', 'API_KEY_NOT_FOUND')
         );
       }
 
-      return Result.ok(empresa.apiKey);
+      return Result.ok(apiKeyPrefix);
     } catch (error: any) {
       return Result.fail(
         new ValidationError([{ field: 'geral', message: 'Erro ao buscar API Key' }])
