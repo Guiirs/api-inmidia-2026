@@ -549,10 +549,15 @@ export class PlacaController {
 
       const currentPlaca = placaResult.value;
 
-      // Atualizar disponibilidade (campo 'ativa')
+      const currentDisponivel =
+        typeof (currentPlaca as any).disponivel === 'boolean'
+          ? (currentPlaca as any).disponivel
+          : Boolean((currentPlaca as any).ativa);
+
+      // Atualizar disponibilidade (campo 'ativa' com normalização para o service)
       const result = await this.placaService.updatePlaca(
         placaId,
-        { ativa: !currentPlaca.ativa } as any,
+        { ativa: !currentDisponivel } as any,
         undefined,
         empresaId
       );
@@ -572,7 +577,7 @@ export class PlacaController {
 
       Log.info('[PlacaController] Disponibilidade alterada', {
         placaId,
-        novaDisponibilidade: !currentPlaca.ativa,
+        novaDisponibilidade: !currentDisponivel,
         empresaId
       });
 

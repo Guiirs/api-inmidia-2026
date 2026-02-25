@@ -30,7 +30,7 @@ const authenticateToken = (
         logger.warn(
           `[AuthMiddleware] Verificação do token falhou: ${err.message}. Status: ${err.name}`
         );
-        throw new AppError('Token inválido ou expirado.', 403);
+        return next(new AppError('Token inválido ou expirado.', 403));
       }
 
       const user = decoded as IUserPayload;
@@ -39,7 +39,7 @@ const authenticateToken = (
         logger.error(
           `[AuthMiddleware] Payload do token incompleto para utilizador ID: ${user?.id || 'N/A'}.`
         );
-        throw new AppError('Token inválido (payload incompleto).', 403);
+        return next(new AppError('Token inválido (payload incompleto).', 403));
       }
 
       req.user = user;

@@ -3,8 +3,7 @@ import { createClient, RedisClientType } from 'redis';
 import logger from '@shared/container/logger';
 import config from '@config/config';
 
-// ⚠️ REDIS TEMPORARIAMENTE DESATIVADO
-const REDIS_ENABLED = false;
+const REDIS_ENABLED = process.env.REDIS_ENABLED === 'true';
 
 class RedisConfig {
   private static instance: RedisConfig;

@@ -56,7 +56,7 @@ export const modules: ModuleDefinition[] = [
   },
   {
     name: 'users',
-    basePath: '/api/v1/user',
+    basePath: '/api/v1/users',
     router: userRoutes,
     description: 'Gestão de usuários do sistema',
     domain: 'core',
