@@ -11,6 +11,10 @@ import AppError from '../../shared/container/AppError';
 class PublicApiService {
   constructor() {}
 
+  private escapeRegex(input: string): string {
+    return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
   private ensureEmpresaId(empresa_id: string | mongoose.Types.ObjectId): mongoose.Types.ObjectId {
     if (!empresa_id || !mongoose.Types.ObjectId.isValid(String(empresa_id))) {
       throw new AppError('ID da empresa invalido fornecido.', 400);
@@ -124,14 +128,15 @@ class PublicApiService {
     if (query.search) {
       const search = String(query.search).trim();
       if (search) {
+        const safeSearch = this.escapeRegex(search);
         filter.$and = [
           ...(filter.$and || []),
           {
             $or: [
-              { numero_placa: { $regex: search, $options: 'i' } },
-              { nomeDaRua: { $regex: search, $options: 'i' } },
-              { localizacao: { $regex: search, $options: 'i' } },
-              { bairro: { $regex: search, $options: 'i' } },
+              { numero_placa: { $regex: safeSearch, $options: 'i' } },
+              { nomeDaRua: { $regex: safeSearch, $options: 'i' } },
+              { localizacao: { $regex: safeSearch, $options: 'i' } },
+              { bairro: { $regex: safeSearch, $options: 'i' } },
             ],
           },
         ];
@@ -194,7 +199,7 @@ class PublicApiService {
   async getPublicRegioes(
     empresa_id: string | mongoose.Types.ObjectId,
     query: { page?: number; limit?: number; search?: string } = {}
-  ): Promise<any[]> {
+  ): Promise<{ data: any[]; pagination: any }> {
     const empresaObjectId = this.ensureEmpresaId(empresa_id);
     const page = Math.max(1, Number(query.page || 1));
     const limit = Math.min(100, Math.max(1, Number(query.limit || 100)));
@@ -207,19 +212,32 @@ class PublicApiService {
     if (query.search) {
       const search = String(query.search).trim();
       if (search) {
-        filter.nome = { $regex: search, $options: 'i' };
+        filter.nome = { $regex: this.escapeRegex(search), $options: 'i' };
       }
     }
 
-    const regioes = await Regiao.find(filter)
-      .select('_id nome slug')
-      .sort({ nome: 1 })
-      .skip(skip)
-      .limit(limit)
-      .lean()
-      .exec();
+    const [regioes, total] = await Promise.all([
+      Regiao.find(filter)
+        .select('_id nome slug')
+        .sort({ nome: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      Regiao.countDocuments(filter),
+    ]);
 
-    return regioes.map((r: any) => this.mapPublicRegiao(r));
+    return {
+      data: regioes.map((r: any) => this.mapPublicRegiao(r)),
+      pagination: {
+        totalDocs: total,
+        totalPages: Math.ceil(total / limit) || 1,
+        currentPage: page,
+        limit,
+        hasNextPage: page * limit < total,
+        hasPrevPage: page > 1,
+      },
+    };
   }
 }
 

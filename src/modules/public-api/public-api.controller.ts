@@ -11,6 +11,21 @@ import logger from '../../shared/container/logger';
 // Instancia o serviço fora das funções do controller
 const publicApiService = new PublicApiService();
 
+function getQueryString(value: unknown, fallback = ''): string {
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed && trimmed.toLowerCase() !== 'undefined' && trimmed.toLowerCase() !== 'null') {
+            return trimmed;
+        }
+    }
+    return fallback;
+}
+
+function getQueryNumber(value: unknown, fallback: number): number {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+}
+
 /**
  * Controller para obter as placas disponíveis para a empresa autenticada via API Key.
  * GET /api/v1/public/placas/disponiveis
@@ -43,10 +58,10 @@ export async function getPublicPlacas(req: IApiKeyRequest, res: Response, next: 
 
     try {
         const result = await publicApiService.getPublicPlacas(empresa_id.toString(), {
-            page: Number(req.query.page || 1),
-            limit: Number(req.query.limit || 24),
-            regiaoId: String((req.query.regiaoId || req.query.regiao_id || '') as string),
-            search: String((req.query.search || req.query.q || '') as string),
+            page: getQueryNumber(req.query.page, 1),
+            limit: getQueryNumber(req.query.limit, 24),
+            regiaoId: getQueryString(req.query.regiaoId) || getQueryString(req.query.regiao_id),
+            search: getQueryString(req.query.search) || getQueryString(req.query.q),
         });
 
         res.status(200).json({
@@ -88,15 +103,16 @@ export async function getPublicRegioes(req: IApiKeyRequest, res: Response, next:
     const empresa_id = req.empresa!._id;
 
     try {
-        const regioes = await publicApiService.getPublicRegioes(empresa_id.toString(), {
-            page: Number(req.query.page || 1),
-            limit: Number(req.query.limit || 100),
-            search: String((req.query.search || '') as string),
+        const result = await publicApiService.getPublicRegioes(empresa_id.toString(), {
+            page: getQueryNumber(req.query.page, 1),
+            limit: getQueryNumber(req.query.limit, 100),
+            search: getQueryString(req.query.search),
         });
 
         res.status(200).json({
             success: true,
-            data: regioes,
+            data: result.data,
+            pagination: result.pagination,
         });
     } catch (err: any) {
         logger.error(`[PublicApiController] Erro ao listar regiões públicas: ${err.message}`, { status: err.status, stack: err.stack });
