@@ -24,6 +24,10 @@ logger.debug('[Routes PublicAPI] Rota GET /placas/disponiveis definida (Placas D
 router.get('/placas', publicApiController.getPublicPlacas);
 logger.debug('[Routes PublicAPI] Rota GET /placas definida (Placas Publicas).');
 
+// GET /api/v1/public/placas-detalhe?id=... - Detalhe publico via query param (compat JetEngine)
+router.get('/placas-detalhe', publicApiController.getPublicPlacaByQuery);
+logger.debug('[Routes PublicAPI] Rota GET /placas-detalhe definida (Detalhe Publico por Query).');
+
 // GET /api/v1/public/placas/:id - Detalhe publico de placa
 router.get('/placas/:id', publicApiController.getPublicPlacaById);
 logger.debug('[Routes PublicAPI] Rota GET /placas/:id definida (Detalhe Publico de Placa).');

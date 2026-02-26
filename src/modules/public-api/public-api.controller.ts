@@ -96,6 +96,26 @@ export async function getPublicPlacaById(req: IApiKeyRequest, res: Response, nex
 }
 
 /**
+ * GET /api/v1/public/placas-detalhe?id=...
+ * Detalhe publico de placa via query param (melhor compatibilidade com JetEngine)
+ */
+export async function getPublicPlacaByQuery(req: IApiKeyRequest, res: Response, next: NextFunction): Promise<void> {
+    const empresa_id = req.empresa!._id;
+    const placaId = getQueryString(req.query.id);
+
+    try {
+        const placa = await publicApiService.getPublicPlacaById(empresa_id.toString(), placaId);
+        res.status(200).json({
+            success: true,
+            data: placa,
+        });
+    } catch (err: any) {
+        logger.error(`[PublicApiController] Erro ao buscar placa pública por query id: ${err.message}`, { status: err.status, stack: err.stack });
+        next(err);
+    }
+}
+
+/**
  * GET /api/v1/public/regioes
  * Lista regiões públicas da empresa autenticada por API Key
  */
@@ -124,6 +144,7 @@ export default {
     getAvailablePlacas,
     getPublicPlacas,
     getPublicPlacaById,
+    getPublicPlacaByQuery,
     getPublicRegioes,
 };
 
