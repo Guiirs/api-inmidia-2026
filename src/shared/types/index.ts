@@ -245,6 +245,8 @@ export type MiddlewareFn = (
 ) => void | Promise<void>;
 
 /**
+ * soo izz demais so
+ * 
  * Tipo para controller functions
  */
 export type ControllerFn = (
