@@ -269,7 +269,7 @@ export class EmpresaRepository implements IEmpresaRepository {
 
       // Importa o modelo de User dinamicamente para evitar circular dependency
       try {
-        const User = require('@modules/users/User').default;
+        const User = (await import('@modules/users/User')).default;
         
         // Cria usuário admin (NÃO fazer hash aqui - deixar pre-save hook fazer)
         const newUser = new User({

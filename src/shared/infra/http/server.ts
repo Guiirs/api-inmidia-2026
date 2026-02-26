@@ -7,6 +7,9 @@ import logger from '@shared/container/logger';
 import config from '@config/config';
 import connectDB from '@shared/infra/db/dbMongo';
 
+// Types
+import type { IAuthenticatedSocket } from '../../../types/socket';
+
 // Services and Middlewares (imported for Socket.IO and other features)
 import socketAuthMiddleware from './middlewares/socket-auth.middleware';
 import notificationService from '@shared/container/notification.service';
@@ -42,7 +45,13 @@ if (process.env.NODE_ENV !== 'test') {
   io.use(socketAuthMiddleware);
 
   // Connection management
-  io.on('connection', (socket: any) => {
+  io.on('connection', (socket: IAuthenticatedSocket) => {
+    if (!socket.user) {
+      socket.disconnect(true);
+      logger.warn('[Socket.IO] Conexão rejeitada - usuário não autenticado');
+      return;
+    }
+
     const { id: userId, empresaId, role, username } = socket.user;
 
     logger.info(`[Socket.IO] 🔌 Client connected: ${username} (${socket.id})`);

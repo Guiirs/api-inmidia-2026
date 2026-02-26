@@ -56,15 +56,24 @@ const validateAluguelCreateBody = [
 ];
 
 const validateAluguelUpdateBody = [
+    body('clienteId')
+        .optional()
+        .isMongoId().withMessage('O ID do cliente e invalido.'),
+    body('periodType')
+        .optional()
+        .isIn(['quinzenal', 'mensal', 'custom']).withMessage('Tipo de periodo invalido.'),
     body('startDate')
         .optional()
-        .isISO8601().withMessage('Data de início inválida.'),
+        .isISO8601().withMessage('Data de in??cio inv??lida.'),
     body('endDate')
         .optional()
-        .isISO8601().withMessage('Data de fim inválida.'),
+        .isISO8601().withMessage('Data de fim inv??lida.'),
+    body('biWeekIds')
+        .optional()
+        .isArray().withMessage('biWeekIds deve ser um array.'),
     body('status')
         .optional()
-        .isIn(['ativo', 'finalizado', 'cancelado']).withMessage('Status inválido.')
+        .isIn(['ativo', 'finalizado', 'cancelado']).withMessage('Status inv??lido.')
 ];
 
 const validateCheckDisponibilidadeBody = [

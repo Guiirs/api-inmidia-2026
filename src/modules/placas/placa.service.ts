@@ -8,7 +8,7 @@ import Regiao from '@modules/regioes/Regiao';
 import Aluguel from '@modules/alugueis/Aluguel';
 import PropostaInterna from '@modules/propostas-internas/PropostaInterna';
 import logger from '@shared/container/logger';
-const path = require('path');
+import path from 'path';
 import mongoose from 'mongoose';
 import { safeDeleteFromR2 } from '@shared/infra/http/middlewares/upload.middleware';
 import AppError from '@shared/container/AppError';
@@ -91,7 +91,7 @@ export class PlacaService {
     if (file) {
         imagemAntigaKeyCompleta = placaAntiga.imagem ? `${process.env.R2_FOLDER_NAME || 'inmidia-uploads-sistema'}/${placaAntiga.imagem}` : null;
         dadosParaAtualizar.imagem = path.basename(file.key);
-    } else if (dadosParaAtualizar.hasOwnProperty('imagem') && dadosParaAtualizar.imagem === '') {
+    } else if (Object.prototype.hasOwnProperty.call(dadosParaAtualizar, 'imagem') && dadosParaAtualizar.imagem === '') {
         imagemAntigaKeyCompleta = placaAntiga.imagem ? `${process.env.R2_FOLDER_NAME || 'inmidia-uploads-sistema'}/${placaAntiga.imagem}` : null;
         dadosParaAtualizar.imagem = null; 
     } else {
@@ -105,9 +105,9 @@ export class PlacaService {
              if (!regiaoExistente) {
                 throw new AppError(`Região ID ${dadosParaAtualizar.regiao} inválida ou não pertence à empresa ${empresaId}.`, 404);
              }
-        } else if (dadosParaAtualizar.hasOwnProperty('regiao') && !dadosParaAtualizar.regiao) {
+        } else if (Object.prototype.hasOwnProperty.call(dadosParaAtualizar, 'regiao') && !dadosParaAtualizar.regiao) {
              dadosParaAtualizar.regiao = null;
-        } else if (!dadosParaAtualizar.hasOwnProperty('regiao')) {
+        } else if (!Object.prototype.hasOwnProperty.call(dadosParaAtualizar, 'regiao')) {
             delete dadosParaAtualizar.regiao;
         }
 
@@ -159,7 +159,7 @@ export class PlacaService {
     const skip = (pageInt - 1) * limitInt;
     const sortOrder = order === 'desc' ? -1 : 1;
 
-    let query: any = { empresaId: empresaId };
+    const query: any = { empresaId: empresaId };
     if (regiao_id && regiao_id !== 'todas') {
         if (mongoose.Types.ObjectId.isValid(regiao_id)) {
             query.regiaoId = regiao_id; // ✅ CORREÇÃO: Usar 'regiaoId' ao invés de 'regiao'

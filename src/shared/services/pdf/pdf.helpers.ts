@@ -38,7 +38,7 @@ export function generateDateRange(dataInicio: string, dataFim: string): Date[] {
   const start = new Date(dataInicio + 'T00:00:00' + timezone);
   const end = new Date(dataFim + 'T00:00:00' + timezone);
   
-  let current = new Date(start);
+  const current = new Date(start);
   while (current <= end && dates.length < 31) {
     dates.push(new Date(current));
     current.setDate(current.getDate() + 1);

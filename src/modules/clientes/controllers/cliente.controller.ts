@@ -12,6 +12,15 @@ import type { ClienteService } from '../services/cliente.service';
 export class ClienteController {
   constructor(private readonly clienteService: ClienteService) {}
 
+  private sendFailure(res: Response, statusCode: number, error: any): void {
+    res.status(statusCode).json({
+      success: false,
+      error: error.message,
+      code: error.code,
+      ...(Array.isArray(error?.errors) ? { errors: error.errors } : {})
+    });
+  }
+
   /**
    * Cria novo cliente
    * POST /api/v1/clientes
@@ -48,11 +57,7 @@ export class ClienteController {
       // Verificar resultado
       if (result.isFailure) {
         const statusCode = getErrorStatusCode(result.error);
-        res.status(statusCode).json({
-          success: false,
-          error: result.error.message,
-          code: result.error.code
-        });
+        this.sendFailure(res, statusCode, result.error);
         return;
       }
 
@@ -127,11 +132,7 @@ export class ClienteController {
       // Verificar resultado
       if (result.isFailure) {
         const statusCode = getErrorStatusCode(result.error);
-        res.status(statusCode).json({
-          success: false,
-          error: result.error.message,
-          code: result.error.code
-        });
+        this.sendFailure(res, statusCode, result.error);
         return;
       }
 
@@ -191,7 +192,15 @@ export class ClienteController {
 
       const cachedResult = await Cache.get<any>(cacheKey);
 
-      if (cachedResult) {
+      if (cachedResult.isFailure) {
+        Log.warn('[ClienteController] Falha ao consultar cache', {
+          empresaId,
+          page,
+          error: cachedResult.error.message
+        });
+      }
+
+      if (cachedResult.isSuccess && cachedResult.value) {
         Log.info('[ClienteController] Cache HIT para clientes', {
           empresaId,
           page
@@ -199,7 +208,7 @@ export class ClienteController {
 
         res.status(200).json({
           success: true,
-          ...cachedResult,
+          ...cachedResult.value,
           cached: true
         });
         return;
@@ -216,11 +225,7 @@ export class ClienteController {
       // Verificar resultado
       if (result.isFailure) {
         const statusCode = getErrorStatusCode(result.error);
-        res.status(statusCode).json({
-          success: false,
-          error: result.error.message,
-          code: result.error.code
-        });
+        this.sendFailure(res, statusCode, result.error);
         return;
       }
 
@@ -283,11 +288,7 @@ export class ClienteController {
       // Verificar resultado
       if (result.isFailure) {
         const statusCode = getErrorStatusCode(result.error);
-        res.status(statusCode).json({
-          success: false,
-          error: result.error.message,
-          code: result.error.code
-        });
+        this.sendFailure(res, statusCode, result.error);
         return;
       }
 
@@ -341,11 +342,7 @@ export class ClienteController {
       // Verificar resultado
       if (result.isFailure) {
         const statusCode = getErrorStatusCode(result.error);
-        res.status(statusCode).json({
-          success: false,
-          error: result.error.message,
-          code: result.error.code
-        });
+        this.sendFailure(res, statusCode, result.error);
         return;
       }
 

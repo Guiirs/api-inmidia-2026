@@ -42,6 +42,8 @@ export const CreateAluguelSchema = z.object({
  * Schema para atualização de aluguel
  */
 export const UpdateAluguelSchema = z.object({
+  clienteId: z.string().min(1, ValidationMessages.requiredSelect('um cliente')).optional(),
+  periodType: z.enum(['quinzenal', 'mensal', 'custom']).optional(),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
   biWeekIds: z.array(z.string()).optional(),
@@ -133,9 +135,15 @@ export interface AluguelEntity {
 export interface AluguelListItem {
   id: string;
   placa_numero: string;
+  placaId?: string;
   cliente_nome: string;
+  clienteId?: string;
+  periodType?: 'quinzenal' | 'mensal' | 'custom';
+  biWeekIds?: string[];
   startDate: Date;
   endDate: Date;
+  data_inicio?: Date;
+  data_fim?: Date;
   status: string;
   tipo: string;
   createdAt: Date;
@@ -222,9 +230,15 @@ export function toListItem(aluguel: AluguelEntity & any): AluguelListItem {
   return {
     id: aluguel._id.toString(),
     placa_numero: placaNumero,
+    placaId: typeof placa === 'object' && placa?._id ? placa._id.toString() : undefined,
     cliente_nome: clienteNome,
+    clienteId: typeof cliente === 'object' && cliente?._id ? cliente._id.toString() : undefined,
+    periodType: aluguel.periodType,
+    biWeekIds: aluguel.biWeekIds || [],
     startDate: aluguel.startDate,
     endDate: aluguel.endDate,
+    data_inicio: aluguel.startDate,
+    data_fim: aluguel.endDate,
     status: aluguel.status,
     tipo: aluguel.tipo,
     createdAt: aluguel.createdAt

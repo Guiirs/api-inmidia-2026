@@ -4,6 +4,7 @@ import Placa from '../modules/placas/Placa';
 import Aluguel from '../modules/alugueis/Aluguel';
 import * as PIService from '../modules/propostas-internas/pi.service';
 import * as PISyncService from '../modules/propostas-internas/pi-sync.service';
+import { scheduleWhatsAppReports } from './whatsappDailyReport';
 
 /**
  * Lógica da tarefa agendada (Cron Job) para atualizar o status das placas E PIs.
@@ -119,7 +120,6 @@ const iniciarCronJobs = (): void => {
     // [NOVO] Agenda relatórios diários do WhatsApp
     if (process.env.WHATSAPP_ENABLED === 'true') {
         try {
-            const { scheduleWhatsAppReports } = require('./whatsappDailyReport');
             scheduleWhatsAppReports();
             logger.info('[CRON JOB] ✅ WhatsApp daily reports scheduled');
         } catch (error: any) {

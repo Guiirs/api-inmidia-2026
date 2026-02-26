@@ -4,6 +4,7 @@
  */
 
 import path from 'path';
+import { ZodError } from 'zod';
 import { Result } from '@shared/core';
 import {
   ClienteNotFoundError,
@@ -38,6 +39,58 @@ interface S3File {
 export class ClienteService {
   constructor(private readonly repository: IClienteRepository) {}
 
+  private normalizeDocumento(value?: string | null): string | undefined {
+    if (!value) return undefined;
+    const digits = value.replace(/\D/g, '');
+    return digits || undefined;
+  }
+
+  private normalizeCreateData(data: any): any {
+    const normalized = { ...data };
+    const cpfCnpj = this.normalizeDocumento(data.cpfCnpj ?? data.cnpj ?? data.cpf);
+
+    if (!cpfCnpj) {
+      throw new ValidationError([{ field: 'cpfCnpj', message: 'CPF/CNPJ e obrigatorio' }]);
+    }
+
+    normalized.cpfCnpj = cpfCnpj;
+    if (cpfCnpj.length === 14) normalized.cnpj = cpfCnpj;
+    if (cpfCnpj.length === 11) normalized.cpf = cpfCnpj;
+
+    return normalized;
+  }
+
+  private normalizeUpdateData(data: any): any {
+    const normalized = { ...data };
+    const hasDocumentoInput =
+      Object.prototype.hasOwnProperty.call(data, 'cpfCnpj') ||
+      Object.prototype.hasOwnProperty.call(data, 'cnpj') ||
+      Object.prototype.hasOwnProperty.call(data, 'cpf');
+
+    if (hasDocumentoInput) {
+      const cpfCnpj = this.normalizeDocumento(data.cpfCnpj ?? data.cnpj ?? data.cpf);
+
+      if (!cpfCnpj) {
+        throw new ValidationError([{ field: 'cpfCnpj', message: 'CPF/CNPJ invalido' }]);
+      }
+
+      normalized.cpfCnpj = cpfCnpj;
+      if (cpfCnpj.length === 14) normalized.cnpj = cpfCnpj;
+      if (cpfCnpj.length === 11) normalized.cpf = cpfCnpj;
+    }
+
+    return normalized;
+  }
+
+  private toValidationError(error: ZodError, fallbackField: 'data' | 'query'): ValidationError {
+    const mapped = error.issues.map((issue) => ({
+      field: issue.path?.[0] ? String(issue.path[0]) : fallbackField,
+      message: issue.message
+    }));
+
+    return new ValidationError(mapped.length ? mapped : [{ field: fallbackField, message: 'Dados invalidos' }]);
+  }
+
   /**
    * Cria novo cliente
    */
@@ -48,7 +101,7 @@ export class ClienteService {
   ): Promise<Result<ClienteEntity, DomainError>> {
     try {
       // Validar dados de entrada
-      const validatedData = validateCreateCliente(data);
+      const validatedData = this.normalizeCreateData(validateCreateCliente(data));
 
       // Validar arquivo se fornecido
       if (file) {
@@ -82,12 +135,8 @@ export class ClienteService {
 
       return Result.ok(result.value);
     } catch (error) {
-      if (error instanceof Error && error.name === 'ZodError') {
-        return Result.fail(
-          new ValidationError(
-            [{ field: 'data', message: 'Dados de entrada inválidos' }]
-          )
-        );
+      if (error instanceof ZodError) {
+        return Result.fail(this.toValidationError(error, 'data'));
       }
 
       const domainError = toDomainError(error);
@@ -111,7 +160,7 @@ export class ClienteService {
   ): Promise<Result<ClienteEntity, DomainError>> {
     try {
       // Validar dados de entrada
-      const validatedData = validateUpdateCliente(data);
+      const validatedData = this.normalizeUpdateData(validateUpdateCliente(data));
 
       // Buscar cliente existente
       const existsResult = await this.repository.findById(id, empresaId);
@@ -179,12 +228,8 @@ export class ClienteService {
 
       return Result.ok(result.value);
     } catch (error) {
-      if (error instanceof Error && error.name === 'ZodError') {
-        return Result.fail(
-          new ValidationError(
-            [{ field: 'data', message: 'Dados de entrada inválidos' }]
-          )
-        );
+      if (error instanceof ZodError) {
+        return Result.fail(this.toValidationError(error, 'data'));
       }
 
       const domainError = toDomainError(error);
@@ -245,13 +290,8 @@ export class ClienteService {
 
       return Result.ok(response);
     } catch (error) {
-      if (error instanceof Error && error.name === 'ZodError') {
-        return Result.fail(
-          new ValidationError(
-            [{ field: 'query', message: 'Parâmetros de consulta inválidos' }],
-            'Validação falhou'
-          )
-        );
+      if (error instanceof ZodError) {
+        return Result.fail(this.toValidationError(error, 'query'));
       }
 
       const domainError = toDomainError(error);

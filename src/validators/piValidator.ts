@@ -48,8 +48,9 @@ export const piValidationRules: ValidationChain[] = [
         .isISO8601()
         .withMessage('endDate inválido (formato YYYY-MM-DD).')
         .toDate()
-        .custom((value: Date, { req }: any) => {
-            if (req.body.startDate && value <= req.body.startDate) {
+        .custom((value: Date, context: any) => {
+            const req = context.req as any;
+            if (req.body?.startDate && value <= req.body.startDate) {
                 throw new Error('endDate deve ser posterior a startDate.');
             }
             return true;
@@ -74,8 +75,9 @@ export const piValidationRules: ValidationChain[] = [
         .isISO8601()
         .withMessage('dataFim inválida (formato YYYY-MM-DD).')
         .toDate()
-        .custom((value: Date, { req }: any) => {
-            if (req.body.dataInicio && value <= req.body.dataInicio) {
+        .custom((value: Date, context: any) => {
+            const req = context.req as any;
+            if (req.body?.dataInicio && value <= req.body.dataInicio) {
                 throw new Error('A data final deve ser posterior à data inicial.');
             }
             return true;
@@ -112,7 +114,8 @@ export const piValidationRules: ValidationChain[] = [
         .withMessage('Cada ID de placa na lista deve ser um MongoId válido.'),
 
     // [PERÍODO UNIFICADO] Validação: Pelo menos um formato de período deve ser fornecido
-    body().custom((_value, { req }: any) => {
+    body().custom((_value, context: any) => {
+        const req = context.req as any;
         const hasNewFormat = req.body.periodType || req.body.biWeekIds || req.body.startDate || req.body.endDate;
         const hasLegacyFormat = req.body.tipoPeriodo || req.body.dataInicio || req.body.dataFim;
         

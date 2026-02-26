@@ -31,7 +31,7 @@ class AdminService {
             }).lean().exec();
 
             if (userExists) {
-                let field = userExists.username === username ? 'nome de utilizador' : 'email';
+                const field = userExists.username === username ? 'nome de utilizador' : 'email';
                 throw new AppError(`Já existe um utilizador com este ${field} na sua empresa.`, 409);
             }
 

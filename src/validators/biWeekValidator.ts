@@ -33,8 +33,9 @@ export const createBiWeekValidationRules: ValidationChain[] = [
         .withMessage('A data de término é obrigatória.')
         .isISO8601()
         .withMessage('Data de término inválida. Use formato ISO8601 (YYYY-MM-DD).')
-        .custom((value: string, { req }: any) => {
-            if (new Date(value) <= new Date(req.body.start_date)) {
+        .custom((value: string, context: any) => {
+            const req = context.req as any;
+            if (new Date(value) <= new Date(req.body?.start_date)) {
                 throw new Error('A data de término deve ser posterior à data de início.');
             }
             return true;
@@ -85,8 +86,9 @@ export const updateBiWeekValidationRules: ValidationChain[] = [
         .optional()
         .isISO8601()
         .withMessage('Data de término inválida.')
-        .custom((value: string, { req }: any) => {
-            if (req.body.start_date && new Date(value) <= new Date(req.body.start_date)) {
+        .custom((value: string, context: any) => {
+            const req = context.req as any;
+            if (req.body?.start_date && new Date(value) <= new Date(req.body.start_date)) {
                 throw new Error('A data de término deve ser posterior à data de início.');
             }
             return true;

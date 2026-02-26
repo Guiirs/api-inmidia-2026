@@ -15,8 +15,7 @@ const isTestEnvironment = process.env.JEST_WORKER_ID !== undefined;
 const useTransactions = !isTestEnvironment; // Desativa transações APENAS em teste
 
 if (!useTransactions) {
-    console.warn('\n[[[ ALERTA DE TESTE: Transações Mongoose DESABILITADAS ]]]\n');
-    logger.warn('[AluguelService] TRANSAÇÕES MONGOOSE DESABILITADAS (Ambiente de Teste Detectado via JEST_WORKER_ID)');
+    logger.warn('[AluguelService] Transações Mongoose desabilitadas (Ambiente de Teste Detectado)');
 }
 
 interface PopulatedCliente {

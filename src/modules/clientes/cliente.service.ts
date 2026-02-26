@@ -42,7 +42,7 @@ interface PaginatedResult {
 }
 
 export class ClienteService {
-    async createCliente(clienteData: ClienteData, file: S3File | undefined, empresaId: string): Promise<Document<unknown, {}, ICliente> & ICliente> {
+    async createCliente(clienteData: ClienteData, file: S3File | undefined, empresaId: string): Promise<Document<unknown, Record<string, never>, ICliente> & ICliente> {
         logger.info(`[ClienteService] Tentando criar cliente para empresa ${empresaId}.`);
 
         if (!clienteData.nome) {
@@ -77,7 +77,7 @@ export class ClienteService {
         }
     }
 
-    async updateCliente(id: string, clienteData: ClienteData, file: S3File | undefined, empresaId: string): Promise<Document<unknown, {}, ICliente> & ICliente> {
+    async updateCliente(id: string, clienteData: ClienteData, file: S3File | undefined, empresaId: string): Promise<Document<unknown, Record<string, never>, ICliente> & ICliente> {
         logger.info(`[ClienteService] Tentando atualizar cliente ID ${id} para empresa ${empresaId}.`);
 
         try {

@@ -93,10 +93,11 @@ export const disponibilidadeValidationRules: ValidationChain[] = [
         .isISO8601()
         .withMessage('Data de fim deve estar no formato ISO8601 (YYYY-MM-DD).')
         .toDate()
-        .custom((_dataFim: Date, { req }: any) => {
+        .custom((_dataFim: Date, context: any) => {
+            const req = context.req as any;
             // Pega o valor de data de início de qualquer fonte (camelCase ou snake_case)
-            const dataInicioValue = req.query.dataInicio || req.query.data_inicio;
-            const dataFimValue = req.query.dataFim || req.query.data_fim;
+            const dataInicioValue = req.query?.dataInicio || req.query?.data_inicio;
+            const dataFimValue = req.query?.dataFim || req.query?.data_fim;
             
             // Validação: pelo menos uma das datas de início deve estar presente
             if (!dataInicioValue) {

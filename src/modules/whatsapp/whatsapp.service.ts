@@ -72,11 +72,9 @@ class WhatsAppService {
                     logger.error(`[WhatsApp] Erro ao emitir QR code: ${error.message}`);
                 }
                 
-                // Mantém log no console para debugging (opcional)
+                // QR Code gerado com sucesso
                 if (process.env.NODE_ENV === 'development') {
-                    console.log('\n========================================');
                     qrcode.generate(qr, { small: true });
-                    console.log('========================================\n');
                 }
                 
                 logger.info('[WhatsApp] Aguardando leitura do QR Code...');
@@ -303,7 +301,6 @@ class WhatsAppService {
             }
         } catch (error: any) {
             logger.error(`[WhatsApp] Erro ao processar mensagem: ${error.message}`);
-            console.error(error);
             try {
                 await message.reply('❌ Erro ao processar comando. Tente novamente.');
             } catch (replyError: any) {
@@ -444,7 +441,6 @@ class WhatsAppService {
         } catch (error: any) {
             const err = error as Error;
             logger.error(`[WhatsApp] Erro ao gerar relatório: ${err.message}`);
-            console.error(error);
             throw error;
         }
     }

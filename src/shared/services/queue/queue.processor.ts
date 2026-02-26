@@ -116,11 +116,11 @@ async function generateContratoPDF(
   user: any,
   options: any
 ): Promise<Buffer> {
-  const Contrato = require('../../../models/Contrato').default;
+  const Contrato = (await import('@modules/contratos/Contrato')).default;
   const contrato = await Contrato.findOne({ _id: entityId, empresa: empresaId })
     .populate('empresa')
     .populate({ path: 'pi', populate: { path: 'cliente' } })
-    .lean();
+    .lean() as any;
     
   if (!contrato) throw new Error('Contrato não encontrado');
   

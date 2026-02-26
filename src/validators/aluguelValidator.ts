@@ -57,8 +57,9 @@ export const validateAluguel: ValidationChain[] = [
         .isISO8601()
         .withMessage('endDate inválido (formato YYYY-MM-DD).')
         .toDate()
-        .custom((value: Date, { req }: any) => {
-            if (req.body.startDate && value <= req.body.startDate) {
+        .custom((value: Date, context: any) => {
+            const req = context.req as any;
+            if (req.body?.startDate && value <= req.body.startDate) {
                 throw new Error('endDate deve ser posterior a startDate.');
             }
             return true;
@@ -91,15 +92,17 @@ export const validateAluguel: ValidationChain[] = [
         .isISO8601()
         .withMessage('Data final inválida (formato YYYY-MM-DD).')
         .toDate()
-        .custom((value: Date, { req }: any) => {
-            if (req.body.data_inicio && value <= req.body.data_inicio) {
+        .custom((value: Date, context: any) => {
+            const req = context.req as any;
+            if (req.body?.data_inicio && value <= req.body.data_inicio) {
                 throw new Error('A data final deve ser posterior à data inicial.');
             }
             return true;
         }),
 
     // Validação: Pelo menos um formato de período deve ser fornecido
-    body().custom((_value, { req }: any) => {
+    body().custom((_value, context: any) => {
+        const req = context.req as any;
         const hasNewFormat = req.body.periodType || req.body.biWeekIds || req.body.startDate || req.body.endDate;
         const hasLegacyFormat = req.body.bi_week_ids || (req.body.data_inicio && req.body.data_fim);
         

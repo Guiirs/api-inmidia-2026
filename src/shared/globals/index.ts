@@ -16,6 +16,7 @@ import PropostaInterna from '@modules/propostas-internas/PropostaInterna';
 import Regiao from '@modules/regioes/Regiao';
 import User from '@modules/users/User';
 import BiWeek from '@modules/biweeks/BiWeek';
+import { Types } from 'mongoose';
 
 export const Models = {
   Aluguel,
@@ -206,7 +207,6 @@ export const removeUndefined = <T extends Record<string, any>>(obj: T): Partial<
  * Valida ObjectId
  */
 export const validateObjectId = (id: string, fieldName: string = 'ID'): void => {
-  const { Types } = require('mongoose');
   if (!Types.ObjectId.isValid(id)) {
     throw new AppError(`${fieldName} inválido`, 400);
   }
@@ -216,7 +216,6 @@ export const validateObjectId = (id: string, fieldName: string = 'ID'): void => 
  * Valida array de ObjectIds
  */
 export const validateObjectIds = (ids: string[], fieldName: string = 'IDs'): void => {
-  const { Types } = require('mongoose');
   const invalid = ids.filter(id => !Types.ObjectId.isValid(id));
   
   if (invalid.length > 0) {
@@ -363,7 +362,9 @@ export const daysDifference = (startDate: Date, endDate: Date): number => {
 /**
  * Wrapper para async controllers
  */
-export const asyncHandler = (fn: Function) => {
+export const asyncHandler = (
+  fn: (req: any, res: any, next: any) => unknown | Promise<unknown>
+) => {
   return (req: any, res: any, next: any) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };

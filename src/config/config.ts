@@ -50,12 +50,12 @@ interface IConfig {
 
 // Validate critical environment variables
 if (!process.env.JWT_SECRET) {
-  console.error('FATAL ERROR: JWT_SECRET is not defined in env files');
+  process.stderr.write('[CONFIG] FATAL ERROR: JWT_SECRET is not defined in env files\n');
   process.exit(1);
 }
 
 if (!process.env.MONGODB_URI) {
-  console.error('FATAL ERROR: MONGODB_URI is not defined in env files');
+  process.stderr.write('[CONFIG] FATAL ERROR: MONGODB_URI is not defined in env files\n');
   process.exit(1);
 }
 
@@ -68,9 +68,7 @@ if (
     !process.env.R2_BUCKET_NAME ||
     !process.env.R2_PUBLIC_URL)
 ) {
-  console.warn(
-    'WARNING: R2 storage environment variables are not fully configured. Uploads will fail in production.'
-  );
+  process.stderr.write('[CONFIG] WARNING: R2 storage environment variables are not fully configured. Uploads will fail in production.\n');
 }
 
 const config: IConfig = {

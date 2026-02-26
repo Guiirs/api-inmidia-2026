@@ -130,12 +130,17 @@ export class ClienteRepository implements IClienteRepository {
       }
       
       if (search) {
-        filter.$or = [
+        const searchDigits = search.replace(/\D/g, '');
+        const orFilters: FilterQuery<any>[] = [
           { nome: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-          { cnpj: { $regex: search.replace(/\D/g, ''), $options: 'i' } },
-          { cpf: { $regex: search.replace(/\D/g, ''), $options: 'i' } }
+          { email: { $regex: search, $options: 'i' } }
         ];
+
+        if (searchDigits) {
+          orFilters.push({ cpfCnpj: { $regex: searchDigits, $options: 'i' } });
+        }
+
+        filter.$or = orFilters;
       }
 
       // Executar queries em paralelo

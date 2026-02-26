@@ -16,11 +16,15 @@ export interface ICliente extends IBaseDocument {
   nome: string;
   cpfCnpj: string;
   telefone?: string;
+  logo_url?: string;
   email?: string;
   endereco?: string;
+  bairro?: string;
   cidade?: string;
   estado?: string;
   cep?: string;
+  responsavel?: string;
+  segmento?: string;
   ativo: boolean;
   empresaId: Types.ObjectId; // Novo padrão
   empresa?: Types.ObjectId; // Virtual/legado

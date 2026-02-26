@@ -3,7 +3,7 @@ import { createClient, RedisClientType } from 'redis';
 import logger from '@shared/container/logger';
 import config from '@config/config';
 
-// ⚠️ REDIS TEMPORARIAMENTE DESATIVADO
+// ⚠️ REDIS DESABILITADO - Ambiente de hospedagem não oferece suporte
 const REDIS_ENABLED = false;
 
 class RedisConfig {

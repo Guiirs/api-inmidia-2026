@@ -38,7 +38,9 @@ export interface IEnvironment {
 
 declare global {
   namespace NodeJS {
-    interface ProcessEnv extends IEnvironment {}
+    interface ProcessEnv extends IEnvironment {
+      [key: string]: string | undefined;
+    }
   }
 }
 

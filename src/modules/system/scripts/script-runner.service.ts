@@ -3,10 +3,13 @@
  * Executor de scripts do sistema
  */
 import { spawn } from 'child_process';
-const path = require('path');
-const fs = require('fs').promises;
-const fsSync = require('fs');
+import path from 'path';
+import fs from 'fs/promises';
+import * as fsSync from 'fs';
+import { createRequire } from 'module';
 import logger from '../../../shared/container/logger';
+
+const runtimeRequire = createRequire(__filename);
 
 const SCRIPTS_DIR = path.join(__dirname, '..', 'scripts');
 const LOGS_DIR = path.join(__dirname, '..', 'logs', 'scripts');
@@ -53,7 +56,7 @@ async function runScript(scriptRelativePath: string, options: RunScriptOptions =
   if (ext === '.js') {
     // Try to require & run the module directly if it exports a callable function.
     try {
-      const moduleExports = require(scriptPath);
+      const moduleExports = runtimeRequire(scriptPath);
       // Prefer exported function named 'run' or 'main' or default export or module itself if it's a function
       const fn = (moduleExports && typeof moduleExports === 'function')
         ? moduleExports
@@ -130,12 +133,12 @@ async function runScript(scriptRelativePath: string, options: RunScriptOptions =
   return new Promise((resolve, reject) => {
     child.on('error', async (err) => {
       logger.error('[ScriptRunner] Erro ao executar script:', err.message);
-      try { outStream.end(); errStream.end(); } catch (e) {}
+      try { outStream.end(); errStream.end(); } catch { void 0; }
       reject(err);
     });
 
     child.on('close', async (code, signal) => {
-      try { outStream.end(); errStream.end(); } catch (e) {}
+      try { outStream.end(); errStream.end(); } catch { void 0; }
       logger.info(`[ScriptRunner] Script finalizado: jobId=${jobId} code=${code} signal=${signal}`);
       resolve({ ...result, code, signal });
     });

@@ -20,6 +20,10 @@ export const clienteSchema = new Schema<ICliente>(
       type: String,
       trim: true,
     },
+    logo_url: {
+      type: String,
+      trim: true,
+    },
     email: {
       type: String,
       trim: true,
@@ -30,7 +34,19 @@ export const clienteSchema = new Schema<ICliente>(
       type: String,
       trim: true,
     },
+    bairro: {
+      type: String,
+      trim: true,
+    },
     cidade: {
+      type: String,
+      trim: true,
+    },
+    responsavel: {
+      type: String,
+      trim: true,
+    },
+    segmento: {
       type: String,
       trim: true,
     },
@@ -65,6 +81,17 @@ export const clienteSchema = new Schema<ICliente>(
 // Virtual id
 clienteSchema.virtual('id').get(function (this: any) {
   return this._id.toHexString();
+});
+
+// Virtuals legados para compatibilidade com frontend antigo (campos separados)
+clienteSchema.virtual('cnpj').get(function (this: any) {
+  const value = typeof this.cpfCnpj === 'string' ? this.cpfCnpj.replace(/\D/g, '') : '';
+  return value.length === 14 ? value : undefined;
+});
+
+clienteSchema.virtual('cpf').get(function (this: any) {
+  const value = typeof this.cpfCnpj === 'string' ? this.cpfCnpj.replace(/\D/g, '') : '';
+  return value.length === 11 ? value : undefined;
 });
 
 // Compound index for unique cpfCnpj per empresa

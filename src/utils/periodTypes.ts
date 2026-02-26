@@ -4,6 +4,8 @@
  * Define tipos e constantes para o sistema de períodos padronizado.
  */
 
+import mongoose from 'mongoose';
+
 /**
  * Enum de tipos de período
  */
@@ -56,7 +58,7 @@ export const PeriodSchemaDefinition = {
     sparse: true,
   }],
   biWeeks: [{
-    type: require('mongoose').Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'BiWeek',
     sparse: true,
   }],

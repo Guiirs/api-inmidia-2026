@@ -4,6 +4,7 @@
  */
 
 import { Result, DomainError } from '@shared/core';
+import logger from '@shared/container/logger';
 import { auditService } from '@modules/audit';
 import type { ICheckingRepository } from '../repositories/checking.repository';
 import type {
@@ -39,7 +40,7 @@ export class CheckingService implements ICheckingService {
         resourceId: result.value._id.toString(),
         newData: data,
       }).catch(err => {
-        console.error('[CheckingService] Erro ao criar audit log:', err);
+        logger.error(`[CheckingService] Erro ao criar audit log: ${err}`);
       });
     }
 
@@ -72,7 +73,7 @@ export class CheckingService implements ICheckingService {
         oldData: oldDataResult.value,
         newData: data,
       }).catch(err => {
-        console.error('[CheckingService] Erro ao criar audit log:', err);
+        logger.error(`[CheckingService] Erro ao criar audit log: ${err}`);
       });
     }
 

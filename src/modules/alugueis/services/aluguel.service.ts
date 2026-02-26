@@ -36,6 +36,13 @@ export class AluguelService {
   
   constructor(private readonly repository: IAluguelRepository) {}
 
+  private getObjectIdString(value: any): string {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object' && value._id) return value._id.toString();
+    return value.toString?.() || '';
+  }
+
   /**
    * Cria um novo aluguel
    */
@@ -211,6 +218,14 @@ export class AluguelService {
 
       const current = existingResult.value;
 
+      // 2.1 Se est? mudando cliente, validar exist?ncia na empresa
+      if (validatedData.clienteId && validatedData.clienteId !== this.getObjectIdString(current.clienteId)) {
+        const cliente = await Cliente.findOne({ _id: validatedData.clienteId, empresaId }).lean();
+        if (!cliente) {
+          return Result.fail(new ClienteNotFoundError(validatedData.clienteId));
+        }
+      }
+
       // 3. Validar regras de negócio
       if (validatedData.status) {
         const statusValidation = this.validateStatusTransition(
@@ -228,7 +243,7 @@ export class AluguelService {
         const newEndDate = validatedData.endDate || current.endDate;
 
         const disponibilidadeResult = await this.checkDisponibilidade({
-          placaId: current.placaId.toString(),
+          placaId: this.getObjectIdString(current.placaId),
           startDate: newStartDate,
           endDate: newEndDate,
           excludeAluguelId: id
@@ -248,7 +263,13 @@ export class AluguelService {
       }
 
       // 5. Atualizar aluguel
-      const updateResult = await this.repository.update(id, validatedData, empresaId);
+      // Sincroniza campos legados em updates via findOneAndUpdate
+      const updatePayload: any = { ...validatedData };
+      if (validatedData.startDate) updatePayload.data_inicio = validatedData.startDate;
+      if (validatedData.endDate) updatePayload.data_fim = validatedData.endDate;
+      if (validatedData.biWeekIds) updatePayload.bi_week_ids = validatedData.biWeekIds;
+
+      const updateResult = await this.repository.update(id, updatePayload, empresaId);
       if (updateResult.isFailure) {
         return Result.fail(updateResult.error);
       }

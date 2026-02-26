@@ -1,5 +1,4 @@
 import type { Request } from 'express';
-import { JwtPayload } from 'jsonwebtoken';
 import { ObjectId } from 'mongoose';
 
 /**

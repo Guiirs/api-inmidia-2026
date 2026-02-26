@@ -1,40 +1,9 @@
 /**
- * DEPRECADO: Use services/audit.service.ts
- * 
- * Mantido para compatibilidade com código legado.
- * Este arquivo será removido em versão futura.
+ * DEPRECATED: Legacy compatibility file
+ * This file re-exports the new audit service for backward compatibility.
+ * All imports should be updated to use: import { auditService } from '@modules/audit'
  */
 
-import { auditService } from './index';
-import type { IAuditLog } from './AuditLog';
-
-class AuditService {
-  async log(
-    userId: string,
-    action: string,
-    resource: string,
-    resourceId: string,
-    oldData?: any,
-    newData?: any,
-    ip?: string
-  ): Promise<IAuditLog | null> {
-    const result = await auditService.log({
-      userId,
-      action: action as any,
-      resource,
-      resourceId,
-      oldData,
-      newData,
-      ip,
-    });
-
-    if (result.isFailure) {
-      console.error('[AuditService Legacy] Erro ao criar log:', result.error.message);
-      return null;
-    }
-
-    return result.value as any;
-  }
-}
-
-export default new AuditService();
+// Re-export the new service as default for backward compatibility
+export { auditService as default } from './index';
+export * from './index';
