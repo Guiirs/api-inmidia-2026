@@ -1,6 +1,6 @@
 /**
  * Public API Routes
- * Rotas públicas
+ * Rotas publicas
  */
 import { Router } from 'express';
 import logger from '../../shared/container/logger';
@@ -10,17 +10,29 @@ import apiKeyAuthMiddleware from '../../shared/infra/http/middlewares/api-key-au
 const router = Router();
 
 logger.info('[Routes PublicAPI] Componentes carregados com sucesso.');
-logger.info('[Routes PublicAPI] Definindo rotas da API Pública...');
+logger.info('[Routes PublicAPI] Definindo rotas da API Publica...');
 
-// Aplica o middleware de autenticação por API Key a todas as rotas públicas
+// Aplica o middleware de autenticacao por API Key a todas as rotas publicas
 router.use(apiKeyAuthMiddleware);
 logger.debug('[Routes PublicAPI] Middleware de API Key aplicado a /public/*.');
 
 // GET /api/v1/public/placas/disponiveis
 router.get('/placas/disponiveis', publicApiController.getAvailablePlacas);
-logger.debug('[Routes PublicAPI] Rota GET /placas/disponiveis definida (Placas Disponíveis).');
+logger.debug('[Routes PublicAPI] Rota GET /placas/disponiveis definida (Placas Disponiveis).');
 
-logger.info('[Routes PublicAPI] Rotas da API Pública definidas com sucesso.');
+// GET /api/v1/public/placas - Listagem publica de placas (sem dados comerciais)
+router.get('/placas', publicApiController.getPublicPlacas);
+logger.debug('[Routes PublicAPI] Rota GET /placas definida (Placas Publicas).');
+
+// GET /api/v1/public/placas/:id - Detalhe publico de placa
+router.get('/placas/:id', publicApiController.getPublicPlacaById);
+logger.debug('[Routes PublicAPI] Rota GET /placas/:id definida (Detalhe Publico de Placa).');
+
+// GET /api/v1/public/regioes - Listagem publica de regioes
+router.get('/regioes', publicApiController.getPublicRegioes);
+logger.debug('[Routes PublicAPI] Rota GET /regioes definida (Regioes Publicas).');
+
+logger.info('[Routes PublicAPI] Rotas da API Publica definidas com sucesso.');
 logger.debug('[Routes PublicAPI] Router exportado.');
 
 export default router;

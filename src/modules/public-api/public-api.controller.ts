@@ -34,7 +34,80 @@ export async function getAvailablePlacas(req: IApiKeyRequest, res: Response, nex
     }
 }
 
+/**
+ * GET /api/v1/public/placas
+ * Lista placas públicas da empresa autenticada por API Key (sem dados comerciais)
+ */
+export async function getPublicPlacas(req: IApiKeyRequest, res: Response, next: NextFunction): Promise<void> {
+    const empresa_id = req.empresa!._id;
+
+    try {
+        const result = await publicApiService.getPublicPlacas(empresa_id.toString(), {
+            page: Number(req.query.page || 1),
+            limit: Number(req.query.limit || 24),
+            regiaoId: String((req.query.regiaoId || req.query.regiao_id || '') as string),
+            search: String((req.query.search || req.query.q || '') as string),
+        });
+
+        res.status(200).json({
+            success: true,
+            data: result.data,
+            pagination: result.pagination,
+        });
+    } catch (err: any) {
+        logger.error(`[PublicApiController] Erro ao listar placas públicas: ${err.message}`, { status: err.status, stack: err.stack });
+        next(err);
+    }
+}
+
+/**
+ * GET /api/v1/public/placas/:id
+ * Detalhe público de placa (sem dados comerciais)
+ */
+export async function getPublicPlacaById(req: IApiKeyRequest, res: Response, next: NextFunction): Promise<void> {
+    const empresa_id = req.empresa!._id;
+    const { id } = req.params;
+
+    try {
+        const placa = await publicApiService.getPublicPlacaById(empresa_id.toString(), String(id));
+        res.status(200).json({
+            success: true,
+            data: placa,
+        });
+    } catch (err: any) {
+        logger.error(`[PublicApiController] Erro ao buscar placa pública por ID: ${err.message}`, { status: err.status, stack: err.stack });
+        next(err);
+    }
+}
+
+/**
+ * GET /api/v1/public/regioes
+ * Lista regiões públicas da empresa autenticada por API Key
+ */
+export async function getPublicRegioes(req: IApiKeyRequest, res: Response, next: NextFunction): Promise<void> {
+    const empresa_id = req.empresa!._id;
+
+    try {
+        const regioes = await publicApiService.getPublicRegioes(empresa_id.toString(), {
+            page: Number(req.query.page || 1),
+            limit: Number(req.query.limit || 100),
+            search: String((req.query.search || '') as string),
+        });
+
+        res.status(200).json({
+            success: true,
+            data: regioes,
+        });
+    } catch (err: any) {
+        logger.error(`[PublicApiController] Erro ao listar regiões públicas: ${err.message}`, { status: err.status, stack: err.stack });
+        next(err);
+    }
+}
+
 export default {
-    getAvailablePlacas
+    getAvailablePlacas,
+    getPublicPlacas,
+    getPublicPlacaById,
+    getPublicRegioes,
 };
 
