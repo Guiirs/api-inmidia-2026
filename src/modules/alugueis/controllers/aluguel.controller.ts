@@ -8,10 +8,14 @@ import { Log } from '@shared/core';
 import { getErrorStatusCode } from '@shared/core';
 import type { AluguelService } from '../services/aluguel.service';
 import type { IAuthRequest } from '../../../types/express';
+import LegacyAluguelService from '../aluguel.service';
 
 export class AluguelController {
   
-  constructor(private readonly service: AluguelService) {}
+  constructor(
+    private readonly service: AluguelService,
+    private readonly legacyService = new LegacyAluguelService()
+  ) {}
 
   /**
    * POST /alugueis
@@ -332,6 +336,90 @@ export class AluguelController {
         error: 'Erro interno ao verificar disponibilidade',
         code: 'INTERNAL_ERROR'
       });
+    }
+  };
+
+  /**
+   * GET /alugueis/bi-week/:biWeekId
+   * Endpoint legado migrado para controller DI.
+   */
+  getAlugueisByBiWeek = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const authReq = req as IAuthRequest;
+      const empresaId = authReq.user?.empresaId;
+      const { biWeekId } = req.params;
+
+      if (!empresaId) {
+        res.status(401).json({ success: false, error: 'Usuário não autenticado', code: 'UNAUTHORIZED' });
+        return;
+      }
+
+      if (!biWeekId) {
+        res.status(400).json({ success: false, error: 'biWeekId é obrigatório', code: 'INVALID_BIWEEK_ID' });
+        return;
+      }
+
+      const data = await this.legacyService.getAlugueisByBiWeek(biWeekId, empresaId.toString());
+      res.status(200).json(data);
+    } catch (error) {
+      Log.error('[AluguelController] Erro ao buscar aluguéis por bi-week', { error });
+      res.status(500).json({ success: false, error: 'Erro interno', code: 'INTERNAL_ERROR' });
+    }
+  };
+
+  /**
+   * GET /alugueis/bi-week/:biWeekId/disponiveis
+   * Endpoint legado migrado para controller DI.
+   */
+  getPlacasDisponiveisByBiWeek = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const authReq = req as IAuthRequest;
+      const empresaId = authReq.user?.empresaId;
+      const { biWeekId } = req.params;
+
+      if (!empresaId) {
+        res.status(401).json({ success: false, error: 'Usuário não autenticado', code: 'UNAUTHORIZED' });
+        return;
+      }
+
+      if (!biWeekId) {
+        res.status(400).json({ success: false, error: 'biWeekId é obrigatório', code: 'INVALID_BIWEEK_ID' });
+        return;
+      }
+
+      const data = await this.legacyService.getPlacasDisponiveisByBiWeek(biWeekId, empresaId.toString());
+      res.status(200).json(data);
+    } catch (error) {
+      Log.error('[AluguelController] Erro ao buscar placas disponíveis por bi-week', { error });
+      res.status(500).json({ success: false, error: 'Erro interno', code: 'INTERNAL_ERROR' });
+    }
+  };
+
+  /**
+   * GET /alugueis/bi-week/:biWeekId/relatorio
+   * Endpoint legado migrado para controller DI.
+   */
+  getRelatorioOcupacaoBiWeek = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const authReq = req as IAuthRequest;
+      const empresaId = authReq.user?.empresaId;
+      const { biWeekId } = req.params;
+
+      if (!empresaId) {
+        res.status(401).json({ success: false, error: 'Usuário não autenticado', code: 'UNAUTHORIZED' });
+        return;
+      }
+
+      if (!biWeekId) {
+        res.status(400).json({ success: false, error: 'biWeekId é obrigatório', code: 'INVALID_BIWEEK_ID' });
+        return;
+      }
+
+      const data = await this.legacyService.getRelatorioOcupacaoBiWeek(biWeekId, empresaId.toString());
+      res.status(200).json(data);
+    } catch (error) {
+      Log.error('[AluguelController] Erro ao gerar relatório de ocupação por bi-week', { error });
+      res.status(500).json({ success: false, error: 'Erro interno', code: 'INTERNAL_ERROR' });
     }
   };
 }

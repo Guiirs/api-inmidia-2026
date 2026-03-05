@@ -20,6 +20,22 @@ interface RunScriptOptions {
   env?: Record<string, string>;
 }
 
+function closeStreamsSafely(outStream: fsSync.WriteStream, errStream: fsSync.WriteStream): void {
+  try {
+    outStream.end();
+  } catch (streamErr) {
+    const message = streamErr instanceof Error ? streamErr.message : String(streamErr);
+    logger.warn(`[ScriptRunner] Failed to close stdout stream: ${message}`);
+  }
+
+  try {
+    errStream.end();
+  } catch (streamErr) {
+    const message = streamErr instanceof Error ? streamErr.message : String(streamErr);
+    logger.warn(`[ScriptRunner] Failed to close stderr stream: ${message}`);
+  }
+}
+
 async function ensureLogsDir() {
   if (!fsSync.existsSync(LOGS_DIR)) {
     await fs.mkdir(LOGS_DIR, { recursive: true });
@@ -133,12 +149,12 @@ async function runScript(scriptRelativePath: string, options: RunScriptOptions =
   return new Promise((resolve, reject) => {
     child.on('error', async (err) => {
       logger.error('[ScriptRunner] Erro ao executar script:', err.message);
-      try { outStream.end(); errStream.end(); } catch { void 0; }
+      closeStreamsSafely(outStream, errStream);
       reject(err);
     });
 
     child.on('close', async (code, signal) => {
-      try { outStream.end(); errStream.end(); } catch { void 0; }
+      closeStreamsSafely(outStream, errStream);
       logger.info(`[ScriptRunner] Script finalizado: jobId=${jobId} code=${code} signal=${signal}`);
       resolve({ ...result, code, signal });
     });

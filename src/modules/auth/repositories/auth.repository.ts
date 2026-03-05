@@ -51,7 +51,7 @@ export class AuthRepository implements IAuthRepository {
         .exec();
 
       return Result.ok(user);
-    } catch (error: any) {
+    } catch {
       return Result.fail(
         new NotFoundError('Usuário', usernameOrEmail)
       );
@@ -66,7 +66,7 @@ export class AuthRepository implements IAuthRepository {
         .exec();
 
       return Result.ok(user);
-    } catch (error: any) {
+    } catch {
       return Result.fail(
         new NotFoundError('Usuário', id)
       );
@@ -81,7 +81,7 @@ export class AuthRepository implements IAuthRepository {
         .exec();
 
       return Result.ok(user);
-    } catch (error: any) {
+    } catch {
       return Result.fail(
         new NotFoundError('Usuário', email)
       );
@@ -92,7 +92,7 @@ export class AuthRepository implements IAuthRepository {
     try {
       const isMatch = await bcrypt.compare(plainPassword, hashedPassword);
       return Result.ok(isMatch);
-    } catch (error: any) {
+    } catch {
       return Result.fail(new InvalidCredentialsError());
     }
   }
@@ -106,16 +106,15 @@ export class AuthRepository implements IAuthRepository {
       }
 
       // Password será hasheado pelo pre-save hook
-      const userDoc = user as any;
-      if (userDoc.senha !== undefined) {
-        userDoc.senha = newPassword;
+      if (user.senha !== undefined) {
+        user.senha = newPassword;
       } else {
-        userDoc.password = newPassword;
+        user.password = newPassword;
       }
       
       await user.save();
       return Result.ok(undefined);
-    } catch (error: any) {
+    } catch {
       return Result.fail(new NotFoundError('Usuário', userId));
     }
   }

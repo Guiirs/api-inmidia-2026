@@ -1,5 +1,6 @@
 import { Result } from '@shared/core/Result';
 import { DomainError, NotFoundError, ValidationError } from '@shared/core/DomainError';
+import axios from 'axios';
 import {
   SendMessageInput,
   SendBulkMessagesInput,
@@ -54,18 +55,46 @@ const WhatsAppTemplate = {
  * Repository para WhatsApp
  */
 export class WhatsAppRepository {
+  private getWhatsAppConfig() {
+    return {
+      apiUrl: process.env.WHATSAPP_API_URL || '',
+      token: process.env.WHATSAPP_API_TOKEN || '',
+      timeoutMs: parseInt(process.env.WHATSAPP_API_TIMEOUT_MS || '10000', 10),
+    };
+  }
+
   /**
    * Enviar mensagem
    */
   async sendMessage(data: SendMessageInput): Promise<Result<MessageEntity, DomainError>> {
     try {
-      // TODO: Integrar com API do WhatsApp
-      // const response = await whatsappAPI.sendMessage(data);
+      let status: MessageEntity['status'] = 'sent';
+      const cfg = this.getWhatsAppConfig();
+
+      if (cfg.apiUrl) {
+        const response = await axios.post(
+          cfg.apiUrl,
+          {
+            to: data.to,
+            message: data.message,
+          },
+          {
+            timeout: cfg.timeoutMs,
+            validateStatus: () => true,
+            headers: {
+              'Content-Type': 'application/json',
+              ...(cfg.token ? { Authorization: `Bearer ${cfg.token}` } : {}),
+            },
+          }
+        );
+
+        status = response.status >= 200 && response.status < 300 ? 'sent' : 'failed';
+      }
 
       const message = WhatsAppMessage.create({
         to: data.to,
         message: data.message,
-        status: 'sent',
+        status,
         sentAt: new Date()
       });
 

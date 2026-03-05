@@ -53,7 +53,7 @@ export const TestWebhookSchema = z.object({
     'ALUGUEL_CREATED',
     'ALUGUEL_UPDATED'
   ]),
-  data: z.record(z.string(), z.any()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -72,7 +72,7 @@ export const ListWebhooksQuerySchema = z.object({
  */
 export const ExecuteWebhookSchema = z.object({
   event: z.string().min(1, ValidationMessages.required('Evento')),
-  payload: z.record(z.string(), z.any()),
+  payload: z.record(z.string(), z.unknown()),
 });
 
 // ============================================
@@ -119,7 +119,7 @@ export interface WebhookEntity {
 export interface WebhookExecutionLog {
   webhookId: Types.ObjectId | string;
   event: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   status: 'success' | 'failure';
   statusCode?: number;
   response?: {

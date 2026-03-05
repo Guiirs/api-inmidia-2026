@@ -2,6 +2,25 @@
 import { EventBus } from './event-bus.interface';
 import { RedisEventBus } from './redis-event-bus';
 import logger from '@shared/container/logger';
+import config from '@config/config';
+
+class NoopEventBus implements EventBus {
+  async publish(_topic: string, _message: any): Promise<void> {
+    return;
+  }
+
+  async subscribe(_topic: string, _callback: (message: any) => void | Promise<void>): Promise<void> {
+    return;
+  }
+
+  async unsubscribe(_topic: string): Promise<void> {
+    return;
+  }
+
+  async close(): Promise<void> {
+    return;
+  }
+}
 
 // Factory function to create EventBus instances
 export function createEventBus(type: 'redis' | 'rabbitmq' = 'redis', config?: any): EventBus {
@@ -26,6 +45,12 @@ let eventBusInstance: EventBus | null = null;
 
 export function getEventBus(): EventBus {
   if (!eventBusInstance) {
+    if (!config.redisEnabled) {
+      logger.info('[EventBusFactory] REDIS_ENABLED is off. Using NoopEventBus');
+      eventBusInstance = new NoopEventBus();
+      return eventBusInstance;
+    }
+
     const type = (process.env.EVENT_BUS_TYPE as 'redis' | 'rabbitmq') || 'redis';
     eventBusInstance = createEventBus(type);
   }

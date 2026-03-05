@@ -7,7 +7,7 @@ type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'READ' | 'LOGIN' | 'LOGOUT';
 export const auditMiddleware = (action: AuditAction, resource: string) => {
   return async (req: Request, _res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.id;
       if (userId) {
         const resourceId = req.params.id || req.body.id || 'unknown';
         const ip = req.ip || req.connection.remoteAddress || 'unknown';

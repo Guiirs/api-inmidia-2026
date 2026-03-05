@@ -112,9 +112,14 @@ app.get('/api/v1/health', (_req: Request, res: Response) => {
 // Metrics endpoint (protected by basic auth)
 app.get('/metrics', async (req: Request, res: Response) => {
   try {
+    if (!config.metricsUser || !config.metricsPassword) {
+      logger.warn('[Metrics] Endpoint requested but METRICS_USER/METRICS_PASSWORD not configured');
+      return res.status(503).json({ error: 'Metrics auth not configured' });
+    }
+
     // Basic authentication for Prometheus scraping
     const authHeader = req.headers.authorization;
-    const expectedAuth = `Basic ${Buffer.from(`${process.env.METRICS_USER || 'prometheus'}:${process.env.METRICS_PASSWORD || 'password'}`).toString('base64')}`;
+    const expectedAuth = `Basic ${Buffer.from(`${config.metricsUser}:${config.metricsPassword}`).toString('base64')}`;
 
     if (!authHeader || authHeader !== expectedAuth) {
       res.set('WWW-Authenticate', 'Basic realm="Metrics"');

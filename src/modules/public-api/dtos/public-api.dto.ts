@@ -55,7 +55,7 @@ export const PublicCheckAvailabilitySchema = z.object({
  */
 export const PublicWebhookSchema = z.object({
   event: z.enum(['ALUGUEL_CREATED', 'ALUGUEL_UPDATED', 'PLACA_STATUS_CHANGED']),
-  data: z.record(z.string(), z.any()),
+  data: z.record(z.string(), z.unknown()),
   timestamp: z.coerce.date(),
   signature: z.string().min(1),
 });

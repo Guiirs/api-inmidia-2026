@@ -8,10 +8,15 @@ import { Log } from '@shared/core';
 import { getErrorStatusCode } from '@shared/core';
 import type { RelatorioService } from '../services/relatorio.service';
 import type { IAuthRequest } from '../../../types/express';
+import LegacyRelatorioService from '../relatorio.service';
+import { PeriodoQuerySchema } from '../dtos/relatorio.dto';
 
 export class RelatorioController {
   
-  constructor(private readonly service: RelatorioService) {}
+  constructor(
+    private readonly service: RelatorioService,
+    private readonly legacyService = new LegacyRelatorioService()
+  ) {}
 
   /**
    * GET /relatorios/dashboard-summary
@@ -147,6 +152,45 @@ export class RelatorioController {
         success: false,
         error: 'Erro interno ao calcular ocupação',
         code: 'INTERNAL_ERROR'
+      });
+    }
+  };
+
+  /**
+   * GET /relatorios/export/ocupacao-por-periodo
+   * Exportacao PDF (fluxo legado encapsulado no controller DI).
+   */
+  exportOcupacaoPdf = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const authReq = req as IAuthRequest;
+      const empresaId = authReq.user?.empresaId;
+
+      if (!empresaId) {
+        res.status(401).json({
+          success: false,
+          error: 'Usuário não autenticado',
+          code: 'UNAUTHORIZED',
+        });
+        return;
+      }
+
+      const parsed = PeriodoQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        const firstError = parsed.error.issues[0]?.message || 'Parametros invalidos';
+        res.status(400).json({ message: firstError });
+        return;
+      }
+
+      const dataInicio = new Date(parsed.data.dataInicio);
+      const dataFim = new Date(parsed.data.dataFim);
+      const reportData = await this.legacyService.ocupacaoPorPeriodo(empresaId.toString(), dataInicio, dataFim);
+      await this.legacyService.generateOcupacaoPdf(reportData, dataInicio, dataFim, res);
+    } catch (error) {
+      Log.error('[RelatorioController] Erro ao exportar PDF de ocupação', { error });
+      res.status(500).json({
+        success: false,
+        error: 'Erro interno ao exportar PDF',
+        code: 'INTERNAL_ERROR',
       });
     }
   };

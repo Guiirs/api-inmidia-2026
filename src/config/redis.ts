@@ -1,27 +1,25 @@
-// src/config/redis.ts
-import { createClient, RedisClientType } from 'redis';
+﻿import { createClient, RedisClientType } from 'redis';
 import logger from '@shared/container/logger';
 import config from '@config/config';
-
-// ⚠️ REDIS DESABILITADO - Ambiente de hospedagem não oferece suporte
-const REDIS_ENABLED = false;
 
 class RedisConfig {
   private static instance: RedisConfig;
   private client: RedisClientType;
+  private readonly redisEnabledByConfig: boolean;
 
   private constructor() {
-    // Skip Redis if globally disabled
-    if (!REDIS_ENABLED) {
-      logger.warn('[Redis] ⚠️ Redis DESATIVADO temporariamente');
-      this.client = {} as RedisClientType; // Mock client
+    this.redisEnabledByConfig = config.redisEnabled;
+
+    if (!this.redisEnabledByConfig) {
+      logger.warn('[Redis] Redis disabled by REDIS_ENABLED flag');
+      this.client = {} as RedisClientType;
       return;
     }
 
-    // Skip Redis connection in development if not available
+    // In development, allow running without Redis.
     if (process.env.NODE_ENV === 'development' && !process.env.REDIS_URL) {
       logger.warn('[Redis] Redis not configured for development - using mock client');
-      this.client = {} as RedisClientType; // Mock client
+      this.client = {} as RedisClientType;
       return;
     }
 
@@ -61,6 +59,7 @@ class RedisConfig {
       logger.info('[Redis] Mock client - skipping connection');
       return;
     }
+
     if (!this.client.isOpen) {
       await this.client.connect();
     }
@@ -71,6 +70,7 @@ class RedisConfig {
       logger.info('[Redis] Mock client - skipping disconnect');
       return;
     }
+
     if (this.client.isOpen) {
       await this.client.disconnect();
     }
@@ -78,8 +78,9 @@ class RedisConfig {
 
   public getClient(): RedisClientType {
     if (this.isMockClient()) {
-      throw new Error('Redis client not available in development mode without Redis');
+      throw new Error('Redis client not available in current environment');
     }
+
     return this.client;
   }
 
@@ -87,15 +88,16 @@ class RedisConfig {
     if (this.isMockClient()) {
       return 'MOCK_PONG';
     }
+
     return await this.client.ping();
   }
 
   private isMockClient(): boolean {
-    return !REDIS_ENABLED || !this.client || typeof this.client.connect !== 'function';
+    return !this.redisEnabledByConfig || !this.client || typeof this.client.connect !== 'function';
   }
 
   public isEnabled(): boolean {
-    return REDIS_ENABLED && !this.isMockClient();
+    return this.redisEnabledByConfig && !this.isMockClient();
   }
 }
 

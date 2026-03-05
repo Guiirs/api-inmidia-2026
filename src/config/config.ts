@@ -46,6 +46,22 @@ interface IConfig {
   rateLimitWindowMs: number;
   rateLimitMaxRequests: number;
   redisUrl: string;
+  redisEnabled: boolean;
+  metricsUser?: string;
+  metricsPassword?: string;
+}
+
+function parseEnvToggle(value: string | undefined, defaultValue: boolean): boolean {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (['true', '1', 'on', 'yes'].includes(normalized)) return true;
+  if (['false', '0', 'off', 'no'].includes(normalized)) return false;
+
+  return defaultValue;
 }
 
 // Validate critical environment variables
@@ -56,6 +72,15 @@ if (!process.env.JWT_SECRET) {
 
 if (!process.env.MONGODB_URI) {
   process.stderr.write('[CONFIG] FATAL ERROR: MONGODB_URI is not defined in env files\n');
+  process.exit(1);
+}
+
+// Validate metrics auth in production (security hard requirement)
+if (
+  process.env.NODE_ENV === 'production' &&
+  (!process.env.METRICS_USER || !process.env.METRICS_PASSWORD)
+) {
+  process.stderr.write('[CONFIG] FATAL ERROR: METRICS_USER and METRICS_PASSWORD must be defined in production\n');
   process.exit(1);
 }
 
@@ -88,6 +113,9 @@ const config: IConfig = {
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
   rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  redisEnabled: parseEnvToggle(process.env.REDIS_ENABLED, true),
+  metricsUser: process.env.METRICS_USER,
+  metricsPassword: process.env.METRICS_PASSWORD,
 };
 
 export default config;

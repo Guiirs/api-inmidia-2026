@@ -15,6 +15,7 @@ import socketAuthMiddleware from './middlewares/socket-auth.middleware';
 import notificationService from '@shared/container/notification.service';
 import whatsappService from '@modules/whatsapp/whatsapp.service';
 import QueueService from '@shared/container/queue.service';
+import emailService from '@shared/container/email.service';
 // import scheduleJobs from '@scripts/updateStatusJob'; // Disabled - script removed
 
 // Import the Express app
@@ -84,6 +85,9 @@ if (process.env.NODE_ENV !== 'test') {
   // Initialize notification service
   notificationService.initialize(io);
   logger.info('[Socket.IO] ✅ Socket.IO configured and ready');
+
+  // Initialize email service (SMTP optional)
+  emailService.initialize();
 
   // Initialize WhatsApp service (if enabled)
   if (process.env.WHATSAPP_ENABLED === 'true') {

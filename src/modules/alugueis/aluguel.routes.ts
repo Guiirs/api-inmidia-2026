@@ -4,140 +4,99 @@
  */
 
 import { Router } from 'express';
+import { z } from 'zod';
 import authenticateToken from '@middlewares/auth.middleware';
-import { body, param } from 'express-validator';
-import { handleValidationErrors } from '@modules/auth/authValidator';
 import { Log } from '@shared/core';
+import { validate } from '@shared/infra/http/middlewares/validate.middleware';
 
 // Dependency Injection
 import { AluguelRepository } from './repositories/aluguel.repository';
 import { AluguelService } from './services/aluguel.service';
 import { AluguelController } from './controllers/aluguel.controller';
 
+import {
+  CreateAluguelSchema,
+  UpdateAluguelSchema,
+  CheckDisponibilidadeAluguelSchema,
+  ListAlugueisQuerySchema,
+} from './dtos/aluguel.dto';
+
 const router = Router();
 
-Log.info('[Routes Aluguel] Inicializando rotas de Aluguéis com DI...');
+Log.info('[Routes Aluguel] Inicializando rotas de Alugueis com DI...');
 
 // Instanciar camadas
 const aluguelRepository = new AluguelRepository();
 const aluguelService = new AluguelService(aluguelRepository);
 const aluguelController = new AluguelController(aluguelService);
 
-// Autenticação em todas as rotas
+// Autenticacao em todas as rotas
 router.use(authenticateToken);
 
-// Validações
-const validateIdParam = [
-    param('id').isMongoId().withMessage('O ID do aluguel fornecido é inválido.')
-];
+const mongoIdRegex = /^[0-9a-fA-F]{24}$/;
 
-const validateAluguelCreateBody = [
-    body('placaId')
-        .notEmpty().withMessage('A placa é obrigatória.')
-        .isMongoId().withMessage('O ID da placa é inválido.'),
-    body('clienteId')
-        .notEmpty().withMessage('O cliente é obrigatório.')
-        .isMongoId().withMessage('O ID do cliente é inválido.'),
-    body('startDate')
-        .notEmpty().withMessage('A data de início é obrigatória.')
-        .isISO8601().withMessage('Data de início inválida.'),
-    body('endDate')
-        .notEmpty().withMessage('A data de fim é obrigatória.')
-        .isISO8601().withMessage('Data de fim inválida.'),
-    body('periodType')
-        .optional()
-        .isIn(['quinzenal', 'mensal', 'custom']).withMessage('Tipo de período inválido.'),
-    body('status')
-        .optional()
-        .isIn(['ativo', 'finalizado', 'cancelado']).withMessage('Status inválido.'),
-    body('tipo')
-        .optional()
-        .isIn(['manual', 'pi']).withMessage('Tipo inválido.')
-];
+const idParamsSchema = z.object({
+  params: z.object({
+    id: z.string().regex(mongoIdRegex, 'O ID do aluguel fornecido e invalido.'),
+  }),
+});
 
-const validateAluguelUpdateBody = [
-    body('clienteId')
-        .optional()
-        .isMongoId().withMessage('O ID do cliente e invalido.'),
-    body('periodType')
-        .optional()
-        .isIn(['quinzenal', 'mensal', 'custom']).withMessage('Tipo de periodo invalido.'),
-    body('startDate')
-        .optional()
-        .isISO8601().withMessage('Data de in??cio inv??lida.'),
-    body('endDate')
-        .optional()
-        .isISO8601().withMessage('Data de fim inv??lida.'),
-    body('biWeekIds')
-        .optional()
-        .isArray().withMessage('biWeekIds deve ser um array.'),
-    body('status')
-        .optional()
-        .isIn(['ativo', 'finalizado', 'cancelado']).withMessage('Status inv??lido.')
-];
+const biWeekParamsSchema = z.object({
+  params: z.object({
+    biWeekId: z.string().min(1, 'biWeekId e obrigatorio.'),
+  }),
+});
 
-const validateCheckDisponibilidadeBody = [
-    body('placaId')
-        .notEmpty().withMessage('A placa é obrigatória.')
-        .isMongoId().withMessage('O ID da placa é inválido.'),
-    body('startDate')
-        .notEmpty().withMessage('A data de início é obrigatória.')
-        .isISO8601().withMessage('Data de início inválida.'),
-    body('endDate')
-        .notEmpty().withMessage('A data de fim é obrigatória.')
-        .isISO8601().withMessage('Data de fim inválida.')
-];
+const createAluguelRequestSchema = z.object({ body: CreateAluguelSchema });
+const listAlugueisRequestSchema = z.object({ query: ListAlugueisQuerySchema });
+const checkDisponibilidadeRequestSchema = z.object({ body: CheckDisponibilidadeAluguelSchema });
+const updateAluguelRequestSchema = z.object({
+  params: z.object({
+    id: z.string().regex(mongoIdRegex, 'O ID do aluguel fornecido e invalido.'),
+  }),
+  body: UpdateAluguelSchema,
+});
 
 // POST /api/v1/alugueis - Cria um novo aluguel
-router.post(
-    '/',
-    validateAluguelCreateBody,
-    handleValidationErrors,
-    aluguelController.createAluguel
+router.post('/', validate(createAluguelRequestSchema), aluguelController.createAluguel);
+
+// GET /api/v1/alugueis - Lista todos os alugueis (com filtros)
+router.get('/', validate(listAlugueisRequestSchema), aluguelController.listAlugueis);
+
+// Rotas BI-Week migradas para o controller DI
+router.get(
+  '/bi-week/:biWeekId',
+  validate(biWeekParamsSchema),
+  aluguelController.getAlugueisByBiWeek
 );
 
-// GET /api/v1/alugueis - Lista todos os aluguéis (com filtros)
 router.get(
-    '/',
-    aluguelController.listAlugueis
+  '/bi-week/:biWeekId/disponiveis',
+  validate(biWeekParamsSchema),
+  aluguelController.getPlacasDisponiveisByBiWeek
 );
 
-// GET /api/v1/alugueis/:id - Busca um aluguel específico
 router.get(
-    '/:id',
-    validateIdParam,
-    handleValidationErrors,
-    aluguelController.getAluguelById
+  '/bi-week/:biWeekId/relatorio',
+  validate(biWeekParamsSchema),
+  aluguelController.getRelatorioOcupacaoBiWeek
 );
+
+// GET /api/v1/alugueis/:id - Busca um aluguel especifico
+router.get('/:id', validate(idParamsSchema), aluguelController.getAluguelById);
 
 // PATCH /api/v1/alugueis/:id - Atualiza um aluguel
-router.patch(
-    '/:id',
-    validateIdParam,
-    validateAluguelUpdateBody,
-    handleValidationErrors,
-    aluguelController.updateAluguel
-);
+router.patch('/:id', validate(updateAluguelRequestSchema), aluguelController.updateAluguel);
 
 // DELETE /api/v1/alugueis/:id - Deleta um aluguel
-router.delete(
-    '/:id',
-    validateIdParam,
-    handleValidationErrors,
-    aluguelController.deleteAluguel
-);
+router.delete('/:id', validate(idParamsSchema), aluguelController.deleteAluguel);
 
 // POST /api/v1/alugueis/check-disponibilidade - Verifica disponibilidade
 router.post(
-    '/check-disponibilidade',
-    validateCheckDisponibilidadeBody,
-    handleValidationErrors,
-    aluguelController.checkDisponibilidade
+  '/check-disponibilidade',
+  validate(checkDisponibilidadeRequestSchema),
+  aluguelController.checkDisponibilidade
 );
-
-// TODO: Migrar rotas específicas de BI-Week posteriormente
-// GET /api/v1/alugueis/bi-week/:biWeekId
-// GET /api/v1/alugueis/bi-week/:biWeekId/disponiveis
 
 Log.info('[Routes Aluguel] Rotas de Alugueis definidas com sucesso.');
 

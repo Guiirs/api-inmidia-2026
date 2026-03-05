@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Health Controller
  * Endpoints de health check
  */
@@ -7,18 +7,19 @@ import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import logger from '../../../shared/container/logger';
 import cacheService from '../../../shared/container/cache.service';
+import config from '../../../config/config';
 import fs from 'fs';
 import path from 'path';
 
 /**
  * Health Check Detalhado
- * Verifica conexões com MongoDB, Redis e outros serviços externos
+ * Verifica conexÃµes com MongoDB, Redis e outros serviÃ§os externos
  * 
  * GET /api/v1/status
  * 
  * Retorna:
- * - 200: Todos os serviços saudáveis
- * - 503: Um ou mais serviços indisponíveis
+ * - 200: Todos os serviÃ§os saudÃ¡veis
+ * - 503: Um ou mais serviÃ§os indisponÃ­veis
  */
 export async function healthCheck(_req: Request, res: Response, _next: NextFunction): Promise<void> {
   const startTime = Date.now();
@@ -77,8 +78,13 @@ export async function healthCheck(_req: Request, res: Response, _next: NextFunct
   try {
     const redisAvailable = cacheService.isAvailable();
     
-    if (process.env.REDIS_HOST) {
-      // Redis está configurado, deve estar disponível
+    if (!config.redisEnabled) {
+      checks.services.redis = {
+        status: 'disabled',
+        message: 'Disabled by REDIS_ENABLED'
+      };
+    } else if (process.env.REDIS_HOST || process.env.REDIS_URL) {
+      // Redis estÃ¡ configurado, deve estar disponÃ­vel
       checks.services.redis = {
         status: redisAvailable ? 'healthy' : 'unhealthy',
         message: redisAvailable ? 'Connected' : 'Connection failed'
@@ -88,7 +94,7 @@ export async function healthCheck(_req: Request, res: Response, _next: NextFunct
         isHealthy = false;
       }
     } else {
-      // Redis não configurado (não crítico em dev)
+      // Redis nÃ£o configurado (nÃ£o crÃ­tico em dev)
       checks.services.redis = {
         status: 'disabled',
         message: 'Not configured (using database fallback)'
@@ -100,7 +106,7 @@ export async function healthCheck(_req: Request, res: Response, _next: NextFunct
       status: 'unhealthy',
       error: error.message
     };
-    // Redis não é crítico em dev
+    // Redis nÃ£o Ã© crÃ­tico em dev
     if (process.env.NODE_ENV === 'production') {
       isHealthy = false;
     }
@@ -144,7 +150,7 @@ export async function healthCheck(_req: Request, res: Response, _next: NextFunct
   // Define status geral
   checks.status = isHealthy ? 'healthy' : 'unhealthy';
 
-  // Retorna código apropriado
+  // Retorna cÃ³digo apropriado
   const statusCode = isHealthy ? 200 : 503;
 
   if (!isHealthy) {
@@ -156,13 +162,13 @@ export async function healthCheck(_req: Request, res: Response, _next: NextFunct
 
 /**
  * Readiness Check
- * Verifica se a aplicação está pronta para receber tráfego
+ * Verifica se a aplicaÃ§Ã£o estÃ¡ pronta para receber trÃ¡fego
  * 
  * GET /api/v1/ready
  */
 export async function readinessCheck(_req: Request, res: Response, _next: NextFunction): Promise<void> {
   try {
-    // Verifica se MongoDB está conectado
+    // Verifica se MongoDB estÃ¡ conectado
     if (mongoose.connection.readyState !== 1) {
       res.status(503).json({
         ready: false,
@@ -171,7 +177,7 @@ export async function readinessCheck(_req: Request, res: Response, _next: NextFu
       return;
     }
 
-    // Aplicação pronta
+    // AplicaÃ§Ã£o pronta
     res.status(200).json({
       ready: true,
       timestamp: new Date().toISOString()
@@ -187,12 +193,12 @@ export async function readinessCheck(_req: Request, res: Response, _next: NextFu
 
 /**
  * Liveness Check
- * Verifica se a aplicação está viva (não travada)
+ * Verifica se a aplicaÃ§Ã£o estÃ¡ viva (nÃ£o travada)
  * 
  * GET /api/v1/live
  */
 export function livenessCheck(_req: Request, res: Response, _next: NextFunction): void {
-  // Se chegou aqui, o processo está vivo
+  // Se chegou aqui, o processo estÃ¡ vivo
   res.status(200).json({
     alive: true,
     timestamp: new Date().toISOString()
@@ -204,4 +210,5 @@ export default {
   readinessCheck,
   livenessCheck
 };
+
 

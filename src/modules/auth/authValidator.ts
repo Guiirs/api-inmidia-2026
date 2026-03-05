@@ -1,4 +1,4 @@
-import { body, validationResult, ValidationChain } from 'express-validator';
+import { body, validationResult, ValidationChain, ValidationError } from 'express-validator';
 import { Request, Response, NextFunction } from 'express';
 import AppError from '@shared/container/AppError';
 
@@ -45,15 +45,16 @@ export const handleValidationErrors = (
 
     // Estrutura os erros
     const extractedErrors: Record<string, string> = {};
-    errors.array({ onlyFirstError: true }).forEach((err: any) => {
-        if (!extractedErrors[err.path]) {
-            extractedErrors[err.path] = err.msg;
+    errors.array({ onlyFirstError: true }).forEach((err: ValidationError) => {
+        const field = 'path' in err ? String(err.path) : '_error';
+        if (!extractedErrors[field]) {
+            extractedErrors[field] = String(err.msg);
         }
     });
 
     // Cria e passa o AppError estruturado
     const error = new AppError('Erro de validação nos dados enviados.', 400);
-    (error as any).validationErrors = extractedErrors;
+    (error as AppError & { validationErrors?: Record<string, string> }).validationErrors = extractedErrors;
 
     return next(error);
 };

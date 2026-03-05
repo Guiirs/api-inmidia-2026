@@ -1,4 +1,4 @@
-import { Model, Types } from 'mongoose';
+import { Model, PipelineStage, Types } from 'mongoose';
 import { Result } from '@shared/core/Result';
 import { DomainError, ValidationError } from '@shared/core/DomainError';
 import { DashboardStats } from '../dtos/admin.dto';
@@ -22,16 +22,18 @@ export class AdminRepository {
    */
   async getDashboardStats(startDate?: Date, endDate?: Date, empresaId?: string): Promise<Result<DashboardStats, DomainError>> {
     try {
-      const filter: any = {};
-      
-      if (empresaId) {
-        filter.empresaId = new Types.ObjectId(empresaId);
+      const filter: Record<string, unknown> = {};
+      const dateFilter: Record<string, Date> = {};
+      const empresaObjectId = empresaId ? new Types.ObjectId(empresaId) : null;
+
+      if (empresaObjectId) {
+        filter.empresaId = empresaObjectId;
       }
 
       if (startDate || endDate) {
-        filter.createdAt = {};
-        if (startDate) filter.createdAt.$gte = startDate;
-        if (endDate) filter.createdAt.$lte = endDate;
+        if (startDate) dateFilter.$gte = startDate;
+        if (endDate) dateFilter.$lte = endDate;
+        filter.createdAt = dateFilter;
       }
 
       // Overview
@@ -56,8 +58,12 @@ export class AdminRepository {
       ]);
 
       const alugueisStats = {
-        ativos: alugueisAggregate.find(a => a._id === 'ATIVO')?.count || 0,
-        inativos: alugueisAggregate.find(a => a._id === 'INATIVO')?.count || 0,
+        ativos: alugueisAggregate
+          .filter(a => a._id === 'ATIVO' || a._id === 'ativo')
+          .reduce((sum, item) => sum + (item.count || 0), 0),
+        inativos: alugueisAggregate
+          .filter(a => a._id === 'INATIVO' || a._id === 'inativo')
+          .reduce((sum, item) => sum + (item.count || 0), 0),
         aguardandoAprovacao: alugueisAggregate.find(a => a._id === 'AGUARDANDO_APROVACAO')?.count || 0,
         valorTotal: alugueisAggregate.reduce((sum, a) => sum + (a.valorTotal || 0), 0)
       };
@@ -68,7 +74,11 @@ export class AdminRepository {
       const ticketMedio = totalAlugueis > 0 ? receitaMensal / totalAlugueis : 0;
 
       // Estatísticas por região
-      const regioes = await this.regiaoModel.aggregate([
+      const regioesPipeline: PipelineStage[] = [];
+      if (empresaObjectId) {
+        regioesPipeline.push({ $match: { empresaId: empresaObjectId } } as PipelineStage);
+      }
+      regioesPipeline.push(
         {
           $lookup: {
             from: 'placas',
@@ -76,17 +86,40 @@ export class AdminRepository {
             foreignField: 'regiaoId',
             as: 'placas'
           }
-        },
+        } as PipelineStage,
+        {
+          $lookup: {
+            from: 'alugueis',
+            let: { placaIds: '$placas._id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $in: ['$placaId', '$$placaIds'] },
+                  ...(empresaObjectId ? { empresaId: empresaObjectId } : {}),
+                  ...(Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {})
+                }
+              }
+            ],
+            as: 'alugueis'
+          }
+        } as PipelineStage,
         {
           $project: {
             nome: 1,
-            totalPlacas: { $size: '$placas' }
+            totalPlacas: { $size: '$placas' },
+            totalAlugueis: { $size: '$alugueis' }
           }
-        }
-      ]);
+        } as PipelineStage
+      );
+
+      const regioes = await this.regiaoModel.aggregate(regioesPipeline);
 
       // Estatísticas por empresa
-      const empresas = await this.empresaModel.aggregate([
+      const empresasPipeline: PipelineStage[] = [];
+      if (empresaObjectId) {
+        empresasPipeline.push({ $match: { _id: empresaObjectId } } as PipelineStage);
+      }
+      empresasPipeline.push(
         {
           $lookup: {
             from: 'clientes',
@@ -94,7 +127,7 @@ export class AdminRepository {
             foreignField: 'empresaId',
             as: 'clientes'
           }
-        },
+        } as PipelineStage,
         {
           $lookup: {
             from: 'alugueis',
@@ -102,7 +135,7 @@ export class AdminRepository {
             foreignField: 'empresaId',
             as: 'alugueis'
           }
-        },
+        } as PipelineStage,
         {
           $project: {
             nome: 1,
@@ -112,8 +145,10 @@ export class AdminRepository {
               $sum: '$alugueis.valor_mensal'
             }
           }
-        }
-      ]);
+        } as PipelineStage
+      );
+
+      const empresas = await this.empresaModel.aggregate(empresasPipeline);
 
       const stats: DashboardStats = {
         overview: {
@@ -132,7 +167,7 @@ export class AdminRepository {
         regioes: regioes.map(r => ({
           nome: r.nome,
           totalPlacas: r.totalPlacas,
-          totalAlugueis: 0 // TODO: adicionar lookup de alugueis
+          totalAlugueis: r.totalAlugueis
         })),
         empresas: empresas.map(e => ({
           nome: e.nome,

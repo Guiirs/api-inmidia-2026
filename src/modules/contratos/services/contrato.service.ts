@@ -105,7 +105,7 @@ export class ContratoService {
    */
   async listContratos(
     empresaId: string,
-    query: ListContratosQueryDTO
+    query: unknown
   ): Promise<Result<PaginatedContratosResponse, DomainError>> {
     try {
       // 1. Validar query

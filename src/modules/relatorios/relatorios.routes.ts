@@ -11,7 +11,6 @@ import Cliente from '@modules/clientes/Cliente';
 import { RelatorioRepository } from './repositories/relatorio.repository';
 import { RelatorioService } from './services/relatorio.service';
 import { RelatorioController } from './controllers/relatorio.controller';
-import * as legacyRelatorioController from './relatorio.controller';
 import authenticateToken from '@middlewares/auth.middleware';
 
 const router = Router();
@@ -42,10 +41,10 @@ router.get(
   controller.getOcupacaoPorPeriodo
 );
 
-// Rota de compatibilidade enquanto exportacao PDF nao e migrada para controller DI.
+// Rota de exportacao centralizada no controller DI.
 router.get(
   '/export/ocupacao-por-periodo',
-  legacyRelatorioController.exportOcupacaoPdf
+  controller.exportOcupacaoPdf
 );
 
 export default router;

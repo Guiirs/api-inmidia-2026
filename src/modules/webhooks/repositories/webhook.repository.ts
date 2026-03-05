@@ -1,6 +1,7 @@
 import { Result } from '@shared/core/Result';
 import { DomainError, NotFoundError, ValidationError } from '@shared/core/DomainError';
 import { CreateWebhookInput, UpdateWebhookInput, ListWebhooksQuery, PaginatedWebhooksResponse, WebhookEntity, WebhookExecutionLog } from '../dtos/webhook.dto';
+import axios from 'axios';
 
 // Mock Webhook Model - Replace with actual import
 const Webhook = {
@@ -255,7 +256,7 @@ export class WebhookRepository {
   /**
    * Executar webhook (enviar requisição)
    */
-  async execute(id: string, event: string, payload: any): Promise<Result<WebhookExecutionLog, DomainError>> {
+  async execute(id: string, event: string, payload: Record<string, unknown>): Promise<Result<WebhookExecutionLog, DomainError>> {
     try {
       const webhookResult = await this.findById(id);
 
@@ -278,26 +279,59 @@ export class WebhookRepository {
         );
       }
 
-      // TODO: Implementar envio real de HTTP request
-      // const response = await fetch(webhook.url, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'X-Webhook-Secret': webhook.secret
-      //   },
-      //   body: JSON.stringify({ event, data: payload })
-      // });
+      const startedAt = Date.now();
+      const timeout = webhook.timeout || 5000;
 
-      const executionLog: WebhookExecutionLog = {
-        webhookId: id,
-        event,
-        payload,
-        status: 'success',
-        statusCode: 200,
-        executedAt: new Date()
-      };
+      try {
+        const response = await axios.post(
+          webhook.url,
+          { event, data: payload },
+          {
+            timeout,
+            validateStatus: () => true,
+            headers: {
+              'Content-Type': 'application/json',
+              ...(webhook.secret ? { 'X-Webhook-Secret': webhook.secret } : {}),
+            },
+          }
+        );
 
-      return Result.ok(executionLog);
+        const duration = Date.now() - startedAt;
+        const responseHeaders: Record<string, string> = {};
+        Object.entries(response.headers || {}).forEach(([key, value]) => {
+          responseHeaders[String(key)] = Array.isArray(value) ? value.join(',') : String(value);
+        });
+
+        const executionLog: WebhookExecutionLog = {
+          webhookId: id,
+          event,
+          payload,
+          status: response.status >= 200 && response.status < 300 ? 'success' : 'failure',
+          statusCode: response.status,
+          response: {
+            status: response.status,
+            body: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
+            headers: responseHeaders,
+          },
+          error: response.status >= 200 && response.status < 300 ? undefined : `Webhook returned HTTP ${response.status}`,
+          duration,
+          executedAt: new Date(),
+        };
+
+        return Result.ok(executionLog);
+      } catch (error) {
+        const errMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+        const executionLog: WebhookExecutionLog = {
+          webhookId: id,
+          event,
+          payload,
+          status: 'failure',
+          error: errMessage,
+          duration: Date.now() - startedAt,
+          executedAt: new Date(),
+        };
+        return Result.ok(executionLog);
+      }
     } catch (error) {
       return Result.fail(
         new ValidationError([{

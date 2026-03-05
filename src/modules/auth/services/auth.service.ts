@@ -5,6 +5,7 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { Result, InvalidCredentialsError, NotFoundError, BusinessRuleViolationError } from '@shared/core';
 import config from '@config/config';
+import emailService from '@shared/container/email.service';
 import type { IAuthRepository } from '../repositories/auth.repository';
 import type {
   LoginInput,
@@ -21,8 +22,8 @@ export class AuthService {
    * Gera token JWT
    */
   private generateToken(payload: JwtPayload): string {
-    const options: SignOptions = { 
-      expiresIn: config.jwtExpiresIn as any
+    const options: SignOptions = {
+      expiresIn: config.jwtExpiresIn as SignOptions['expiresIn'],
     };
     
     return jwt.sign(
@@ -47,7 +48,7 @@ export class AuthService {
       const user = userResult.value;
 
       // Verifica senha
-      const senhaHash = (user as any).senha || (user as any).password;
+      const senhaHash = user.senha || user.password;
       if (!senhaHash) {
         return Result.fail(new InvalidCredentialsError());
       }
@@ -61,7 +62,7 @@ export class AuthService {
       // Gera token
       const payload: JwtPayload = {
         id: user._id.toString(),
-        empresaId: ((user as any).empresa || (user as any).empresaId).toString(),
+        empresaId: (user.empresa || user.empresaId).toString(),
         role: user.role,
         username: user.username,
         email: user.email,
@@ -79,13 +80,13 @@ export class AuthService {
           nome: user.nome,
           telefone: user.telefone,
           role: user.role,
-          empresaId: ((user as any).empresa || (user as any).empresaId).toString(),
+          empresaId: (user.empresa || user.empresaId).toString(),
           createdAt: user.createdAt,
         },
       };
 
       return Result.ok(response);
-    } catch (error: any) {
+    } catch {
       return Result.fail(new InvalidCredentialsError());
     }
   }
@@ -108,7 +109,7 @@ export class AuthService {
       const user = userResult.value;
 
       // Verifica senha antiga
-      const senhaHash = (user as any).senha || (user as any).password;
+      const senhaHash = user.senha || user.password;
       if (!senhaHash) {
         return Result.fail(new InvalidCredentialsError());
       }
@@ -129,7 +130,7 @@ export class AuthService {
       }
 
       return Result.ok({ message: 'Senha alterada com sucesso' });
-    } catch (error: any) {
+    } catch {
       return Result.fail(new NotFoundError('Usuário', userId));
     }
   }
@@ -147,12 +148,32 @@ export class AuthService {
         return Result.ok(undefined);
       }
 
-      // TODO: Implementar envio de email com token
-      // const token = this.generateToken({...});
-      // await emailService.sendPasswordResetEmail(email, token);
+      const user = userResult.value;
+      const expiresInMinutes = parseInt(process.env.PASSWORD_RESET_EXPIRES_MINUTES || '30', 10);
+      const resetPayload: JwtPayload = {
+        id: user._id.toString(),
+        empresaId: (user.empresa || user.empresaId).toString(),
+        role: (user.role || 'user') as JwtPayload['role'],
+        username: user.username || user.email || 'user',
+        email: (user.email || email).toLowerCase(),
+      };
+
+      const token = jwt.sign(resetPayload, config.jwtSecret, {
+        expiresIn: `${expiresInMinutes}m`,
+      });
+
+      const frontendUrl = process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:5173';
+      const baseUrl = frontendUrl.replace(/\/+$/, '');
+      const resetUrl = `${baseUrl}/reset-password/${token}`;
+
+      await emailService.sendPasswordResetEmail({
+        email: resetPayload.email,
+        resetUrl,
+        expiresIn: expiresInMinutes,
+      });
 
       return Result.ok(undefined);
-    } catch (error: any) {
+    } catch {
       return Result.ok(undefined); // Não revelar erro
     }
   }
@@ -176,7 +197,7 @@ export class AuthService {
       }
 
       return Result.ok(undefined);
-    } catch (error: any) {
+    } catch {
       return Result.fail(new InvalidCredentialsError());
     }
   }
@@ -188,7 +209,7 @@ export class AuthService {
     try {
       jwt.verify(token, config.jwtSecret);
       return Result.ok(undefined);
-    } catch (error: any) {
+    } catch {
       return Result.fail(new InvalidCredentialsError());
     }
   }

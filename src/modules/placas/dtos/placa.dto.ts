@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Placa DTOs & Validation Schemas
  */
 
@@ -11,7 +11,7 @@ import { ValidationMessages, FieldMessages } from '@shared/validators/validation
 // ============================================
 
 /**
- * Schema para criação de placa
+ * Schema para criaÃ§Ã£o de placa
  */
 export const CreatePlacaSchema = z.object({
   numero_placa: z.string()
@@ -36,7 +36,7 @@ export const CreatePlacaSchema = z.object({
     .nullable(),
   
   localizacao: z.string()
-    .max(500, ValidationMessages.maxLength('Localização', 500))
+    .max(500, ValidationMessages.maxLength('LocalizaÃ§Ã£o', 500))
     .optional()
     .nullable(),
   
@@ -80,7 +80,7 @@ export const CreatePlacaSchema = z.object({
 });
 
 /**
- * Schema para atualização (todos campos opcionais)
+ * Schema para atualizaÃ§Ã£o (todos campos opcionais)
  */
 export const UpdatePlacaSchema = CreatePlacaSchema.partial();
 
@@ -105,19 +105,19 @@ export const ListPlacasQuerySchema = z.object({
 export const PlacaImageSchema = z.object({
   mimetype: z.enum(['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']),
   size: z.number()
-    .max(5 * 1024 * 1024, 'Arquivo muito grande. Tamanho máximo: 5MB'),
+    .max(5 * 1024 * 1024, 'Arquivo muito grande. Tamanho mÃ¡ximo: 5MB'),
   filename: z.string()
 });
 
 /**
- * Schema para verificação de disponibilidade
+ * Schema para verificaÃ§Ã£o de disponibilidade
  */
 export const CheckDisponibilidadeSchema = z.object({
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
-  placaId: z.string().optional() // Opcional para verificar múltiplas placas
+  placaId: z.string().optional() // Opcional para verificar mÃºltiplas placas
 }).refine((data) => data.endDate > data.startDate, {
-  message: 'Data de fim deve ser posterior à data de início',
+  message: 'Data de fim deve ser posterior Ã  data de inÃ­cio',
   path: ['endDate']
 });
 
@@ -158,6 +158,19 @@ export interface PlacaEntity {
   createdAt: Date;
   updatedAt: Date;
 }
+
+type PlacaListSource = PlacaEntity & {
+  nomeDaRua?: string;
+  coordenadas?: string | { latitude?: number; longitude?: number };
+  disponivel?: boolean;
+  aluguel_ativo?: boolean;
+  aluguel_futuro?: boolean;
+  statusAluguel?: 'disponivel' | 'alugada' | 'reservada';
+  cliente_nome?: string;
+  aluguel_data_inicio?: Date;
+  aluguel_data_fim?: Date;
+  regiaoId: Types.ObjectId | { _id?: Types.ObjectId; id?: string; nome?: string } | string;
+};
 
 /**
  * Placa resumida para listagem
@@ -215,18 +228,18 @@ export interface DisponibilidadeResponse {
 }
 
 // ============================================
-// HELPERS DE VALIDAÇÃO
+// HELPERS DE VALIDAÃ‡ÃƒO
 // ============================================
 
 /**
- * Valida e sanitiza dados de criação
+ * Valida e sanitiza dados de criaÃ§Ã£o
  */
 export function validateCreatePlaca(data: unknown): CreatePlacaDTO {
   return CreatePlacaSchema.parse(data);
 }
 
 /**
- * Valida e sanitiza dados de atualização
+ * Valida e sanitiza dados de atualizaÃ§Ã£o
  */
 export function validateUpdatePlaca(data: unknown): UpdatePlacaDTO {
   return UpdatePlacaSchema.parse(data);
@@ -247,10 +260,14 @@ export function validatePlacaImage(data: unknown): PlacaImageDTO {
 }
 
 /**
- * Valida verificação de disponibilidade
+ * Valida verificaÃ§Ã£o de disponibilidade
  */
 export function validateCheckDisponibilidade(data: unknown): CheckDisponibilidadeDTO {
   return CheckDisponibilidadeSchema.parse(data);
+}
+
+function hasNome(value: unknown): value is { nome?: string } {
+  return typeof value === 'object' && value !== null && 'nome' in value;
 }
 
 // ============================================
@@ -260,15 +277,27 @@ export function validateCheckDisponibilidade(data: unknown): CheckDisponibilidad
 /**
  * Converte PlacaEntity para PlacaListItem
  */
-export function toListItem(placa: PlacaEntity & any): PlacaListItem {
+export function toListItem(placa: PlacaListSource): PlacaListItem {
   const regiao = placa.regiaoId;
-  const regiaoNome = typeof regiao === 'object' && regiao?.nome 
-    ? regiao.nome 
-    : 'Sem região';
+  const regiaoNome = hasNome(regiao) && regiao.nome
+    ? regiao.nome
+    : 'Sem regiao';
 
-  const regiaoId = typeof regiao === 'object'
-    ? (regiao?._id?.toString?.() || regiao?.id)
-    : (typeof placa.regiaoId === 'string' ? placa.regiaoId : undefined);
+  const regiaoId: string | undefined = (() => {
+    if (typeof regiao === 'object' && regiao !== null) {
+      if ('_id' in regiao && (regiao as { _id?: unknown })._id != null) {
+        return String((regiao as { _id: unknown })._id);
+      }
+      if ('id' in regiao && (regiao as { id?: unknown }).id != null) {
+        return String((regiao as { id: unknown }).id);
+      }
+      return undefined;
+    }
+    if (typeof placa.regiaoId === 'string') {
+      return placa.regiaoId;
+    }
+    return undefined;
+  })();
   const disponivel = typeof placa.disponivel === 'boolean'
     ? placa.disponivel
     : (typeof placa.ativa === 'boolean' ? placa.ativa : true);
@@ -304,6 +333,7 @@ export function toListItem(placa: PlacaEntity & any): PlacaListItem {
 /**
  * Converte array de PlacaEntity para PlacaListItem[]
  */
-export function toListItems(placas: Array<PlacaEntity & any>): PlacaListItem[] {
+export function toListItems(placas: PlacaListSource[]): PlacaListItem[] {
   return placas.map(toListItem);
 }
+

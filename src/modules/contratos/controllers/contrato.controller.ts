@@ -8,10 +8,14 @@ import { Log } from '@shared/core';
 import { getErrorStatusCode } from '@shared/core';
 import type { ContratoService } from '../services/contrato.service';
 import type { IAuthRequest } from '../../../types/express';
+import LegacyContratoService from '../contrato.service';
 
 export class ContratoController {
   
-  constructor(private readonly service: ContratoService) {}
+  constructor(
+    private readonly service: ContratoService,
+    private readonly legacyService = new LegacyContratoService()
+  ) {}
 
   /**
    * POST /contratos
@@ -81,7 +85,7 @@ export class ContratoController {
 
       const result = await this.service.listContratos(
         empresaId.toString(),
-        req.query as any
+        req.query
       );
 
       if (result.isFailure) {
@@ -284,6 +288,114 @@ export class ContratoController {
         error: 'Erro interno ao deletar contrato',
         code: 'INTERNAL_ERROR'
       });
+    }
+  };
+
+  /**
+   * GET /contratos/:id/download
+   * Download PDF (fluxo legado encapsulado no controller DI).
+   */
+  downloadContratoPDF = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const authReq = req as IAuthRequest;
+      const empresaId = authReq.user?.empresaId;
+      const { id } = req.params;
+
+      if (!empresaId) {
+        res.status(401).json({ success: false, error: 'Usuário não autenticado', code: 'UNAUTHORIZED' });
+        return;
+      }
+
+      if (!id) {
+        res.status(400).json({ success: false, error: 'ID não fornecido', code: 'INVALID_ID' });
+        return;
+      }
+
+      await this.legacyService.generatePDF(id, empresaId.toString(), res);
+    } catch (error) {
+      Log.error('[ContratoController] Erro ao gerar PDF do contrato', { error });
+      res.status(500).json({ success: false, error: 'Erro interno ao gerar PDF', code: 'INTERNAL_ERROR' });
+    }
+  };
+
+  /**
+   * GET /contratos/:id/excel
+   * Download Excel (fluxo legado encapsulado no controller DI).
+   */
+  downloadContratoExcel = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const authReq = req as IAuthRequest;
+      const empresaId = authReq.user?.empresaId;
+      const { id } = req.params;
+
+      if (!empresaId) {
+        res.status(401).json({ success: false, error: 'Usuário não autenticado', code: 'UNAUTHORIZED' });
+        return;
+      }
+
+      if (!id) {
+        res.status(400).json({ success: false, error: 'ID não fornecido', code: 'INVALID_ID' });
+        return;
+      }
+
+      await this.legacyService.generateExcel(id, empresaId.toString(), res);
+    } catch (error) {
+      Log.error('[ContratoController] Erro ao gerar Excel do contrato', { error });
+      res.status(500).json({ success: false, error: 'Erro interno ao gerar Excel', code: 'INTERNAL_ERROR' });
+    }
+  };
+
+  /**
+   * GET /contratos/:id/pdf-excel
+   * Download PDF gerado a partir do Excel (fluxo legado encapsulado no controller DI).
+   */
+  downloadContratoPDFFromExcel = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const authReq = req as IAuthRequest;
+      const empresaId = authReq.user?.empresaId;
+      const { id } = req.params;
+
+      if (!empresaId) {
+        res.status(401).json({ success: false, error: 'Usuário não autenticado', code: 'UNAUTHORIZED' });
+        return;
+      }
+
+      if (!id) {
+        res.status(400).json({ success: false, error: 'ID não fornecido', code: 'INVALID_ID' });
+        return;
+      }
+
+      await this.legacyService.generatePDFFromExcel(id, empresaId.toString(), res);
+    } catch (error) {
+      Log.error('[ContratoController] Erro ao gerar PDF (Excel) do contrato', { error });
+      res.status(500).json({ success: false, error: 'Erro interno ao gerar PDF', code: 'INTERNAL_ERROR' });
+    }
+  };
+
+  /**
+   * GET /contratos/:id/pdf-template
+   * Download PDF via template XLSX (fluxo legado encapsulado no controller DI).
+   */
+  downloadContratoPDFFromTemplate = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const authReq = req as IAuthRequest;
+      const empresaId = authReq.user?.empresaId;
+      const { id } = req.params;
+
+      if (!empresaId) {
+        res.status(401).json({ success: false, error: 'Usuário não autenticado', code: 'UNAUTHORIZED' });
+        return;
+      }
+
+      if (!id) {
+        res.status(400).json({ success: false, error: 'ID não fornecido', code: 'INVALID_ID' });
+        return;
+      }
+
+      await this.legacyService.generatePDFFromExcelTemplate(id, empresaId.toString(), res);
+    } catch (error) {
+      Log.error('[ContratoController] Erro ao gerar PDF (template) do contrato', { error });
+      res.status(500).json({ success: false, error: 'Erro interno ao gerar PDF', code: 'INTERNAL_ERROR' });
     }
   };
 }

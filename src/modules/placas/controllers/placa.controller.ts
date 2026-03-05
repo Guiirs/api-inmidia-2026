@@ -9,8 +9,58 @@ import { getErrorStatusCode, Log, Cache } from '@shared/core';
 import type { PlacaService } from '../services/placa.service';
 import Placa from '../Placa';
 
+interface UploadedFileLike {
+  key: string;
+  location: string;
+  bucket: string;
+  mimetype: string;
+  originalname: string;
+  size: number;
+}
+
+interface CachedPlacasList {
+  data: unknown[];
+  pagination: {
+    totalDocs: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface LegacyDisponiveisService {
+  getPlacasDisponiveis: (
+    empresaId: string,
+    startDate: string,
+    endDate: string,
+    query: unknown
+  ) => Promise<unknown[]>;
+}
+
+interface RawLocationPlaca {
+  _id?: { toString(): string } | string;
+  numero_placa?: string;
+  coordenadas?: string;
+  nomeDaRua?: string;
+  regiaoId?: { _id?: { toString(): string }; nome?: string } | string;
+}
+
 export class PlacaController {
   constructor(private readonly placaService: PlacaService) {}
+
+  private getUploadedFile(req: Request): UploadedFileLike | undefined {
+    const file = req.file as Partial<UploadedFileLike> | undefined;
+    if (!file || typeof file.key !== 'string') {
+      return undefined;
+    }
+    return {
+      key: file.key,
+      location: file.location || '',
+      bucket: file.bucket || '',
+      mimetype: file.mimetype || 'application/octet-stream',
+      originalname: file.originalname || 'upload',
+      size: typeof file.size === 'number' ? file.size : 0,
+    };
+  }
 
   /**
    * Cria nova placa
@@ -40,7 +90,7 @@ export class PlacaController {
 
       const result = await this.placaService.createPlaca(
         req.body,
-        req.file as any,
+        this.getUploadedFile(req),
         empresaId
       );
 
@@ -117,7 +167,7 @@ export class PlacaController {
       const result = await this.placaService.updatePlaca(
         placaId,
         req.body,
-        req.file as any,
+        this.getUploadedFile(req),
         empresaId
       );
 
@@ -189,7 +239,7 @@ export class PlacaController {
         .join('&');
       const cacheKey = `placas:empresa:${empresaId}:page:${page}:limit:${limit}:q:${normalizedQuery}`;
 
-      const cachedResult = await Cache.get<any>(cacheKey);
+      const cachedResult = await Cache.get<CachedPlacasList>(cacheKey);
 
       if (cachedResult && cachedResult.isSuccess && cachedResult.value) {
         Log.info('[PlacaController] Cache HIT para placas', {
@@ -403,7 +453,8 @@ export class PlacaController {
         endDate
       });
 
-      const placas = await (this.placaService as any).getPlacasDisponiveis(
+      const serviceWithDisponiveis = this.placaService as unknown as LegacyDisponiveisService;
+      const placas = await serviceWithDisponiveis.getPlacasDisponiveis(
         empresaId,
         startDate,
         endDate,
@@ -457,8 +508,8 @@ export class PlacaController {
         .populate('regiaoId', 'nome')
         .lean();
 
-      const locations = (placas as any[])
-        .map((placa) => {
+      const locations = (placas as RawLocationPlaca[])
+        .map((placa: RawLocationPlaca) => {
           const coords = typeof placa.coordenadas === 'string' ? placa.coordenadas.trim() : '';
           if (!coords || !coords.includes(',')) return null;
 
@@ -549,15 +600,16 @@ export class PlacaController {
 
       const currentPlaca = placaResult.value;
 
+      const currentPlacaState = currentPlaca as { disponivel?: boolean; ativa?: boolean };
       const currentDisponivel =
-        typeof (currentPlaca as any).disponivel === 'boolean'
-          ? (currentPlaca as any).disponivel
-          : Boolean((currentPlaca as any).ativa);
+        typeof currentPlacaState.disponivel === 'boolean'
+          ? currentPlacaState.disponivel
+          : Boolean(currentPlacaState.ativa);
 
       // Atualizar disponibilidade (campo 'ativa' com normalização para o service)
       const result = await this.placaService.updatePlaca(
         placaId,
-        { ativa: !currentDisponivel } as any,
+        { ativa: !currentDisponivel },
         undefined,
         empresaId
       );

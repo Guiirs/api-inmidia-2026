@@ -9,15 +9,23 @@ import webhookService from './webhook.service';
 import logger from '../../shared/container/logger';
 import AppError from '../../shared/container/AppError';
 
+function getRequiredUser(req: IAuthRequest): NonNullable<IAuthRequest['user']> {
+    if (!req.user?.id || !req.user.empresaId) {
+        throw new AppError('Usuário não autenticado', 401);
+    }
+    return req.user;
+}
+
 /**
  * Lista todos os webhooks da empresa
  */
 export async function listarWebhooks(req: IAuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const empresaId = (req.user as any).empresaId;
+        const user = getRequiredUser(req);
+        const empresaId = user.empresaId;
         const { ativo } = req.query;
 
-        const filtros: any = {};
+        const filtros: Record<string, unknown> = {};
         if (ativo !== undefined) {
             filtros.ativo = ativo === 'true';
         }
@@ -29,8 +37,9 @@ export async function listarWebhooks(req: IAuthRequest, res: Response, next: Nex
             total: webhooks.length,
             webhooks
         });
-    } catch (error: any) {
-        logger.error(`[WebhookController] Erro ao listar webhooks: ${error.message}`);
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`[WebhookController] Erro ao listar webhooks: ${msg}`);
         next(error);
     }
 }
@@ -40,8 +49,9 @@ export async function listarWebhooks(req: IAuthRequest, res: Response, next: Nex
  */
 export async function criarWebhook(req: IAuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const empresaId = (req.user as any).empresaId;
-        const userId = (req.user as any).id;
+        const user = getRequiredUser(req);
+        const empresaId = user.empresaId;
+        const userId = user.id;
         const { nome, url, eventos, retry_config, headers } = req.body;
 
         const webhook = await webhookService.criar({
@@ -60,8 +70,9 @@ export async function criarWebhook(req: IAuthRequest, res: Response, next: NextF
             mensagem: 'Webhook criado com sucesso',
             webhook
         });
-    } catch (error: any) {
-        logger.error(`[WebhookController] Erro ao criar webhook: ${error.message}`);
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`[WebhookController] Erro ao criar webhook: ${msg}`);
         next(error);
     }
 }
@@ -71,7 +82,8 @@ export async function criarWebhook(req: IAuthRequest, res: Response, next: NextF
  */
 export async function atualizarWebhook(req: IAuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const empresaId = (req.user as any).empresaId;
+        const user = getRequiredUser(req);
+        const empresaId = user.empresaId;
         const { webhookId } = req.params;
         const dados = req.body;
         if (!webhookId) {
@@ -87,8 +99,9 @@ export async function atualizarWebhook(req: IAuthRequest, res: Response, next: N
             mensagem: 'Webhook atualizado com sucesso',
             webhook
         });
-    } catch (error: any) {
-        logger.error(`[WebhookController] Erro ao atualizar webhook: ${error.message}`);
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`[WebhookController] Erro ao atualizar webhook: ${msg}`);
         next(error);
     }
 }
@@ -98,7 +111,8 @@ export async function atualizarWebhook(req: IAuthRequest, res: Response, next: N
  */
 export async function removerWebhook(req: IAuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const empresaId = (req.user as any).empresaId;
+        const user = getRequiredUser(req);
+        const empresaId = user.empresaId;
         const { webhookId } = req.params;
         if (!webhookId) {
             throw new AppError('Webhook ID Ã© obrigatÃ³rio', 400);
@@ -112,8 +126,9 @@ export async function removerWebhook(req: IAuthRequest, res: Response, next: Nex
             sucesso: true,
             mensagem: 'Webhook removido com sucesso'
         });
-    } catch (error: any) {
-        logger.error(`[WebhookController] Erro ao remover webhook: ${error.message}`);
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`[WebhookController] Erro ao remover webhook: ${msg}`);
         next(error);
     }
 }
@@ -123,7 +138,8 @@ export async function removerWebhook(req: IAuthRequest, res: Response, next: Nex
  */
 export async function regenerarSecret(req: IAuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const empresaId = (req.user as any).empresaId;
+        const user = getRequiredUser(req);
+        const empresaId = user.empresaId;
         const { webhookId } = req.params;
         if (!webhookId) {
             throw new AppError('Webhook ID Ã© obrigatÃ³rio', 400);
@@ -137,8 +153,9 @@ export async function regenerarSecret(req: IAuthRequest, res: Response, next: Ne
             sucesso: true,
             ...resultado
         });
-    } catch (error: any) {
-        logger.error(`[WebhookController] Erro ao regenerar secret: ${error.message}`);
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`[WebhookController] Erro ao regenerar secret: ${msg}`);
         next(error);
     }
 }
@@ -148,7 +165,8 @@ export async function regenerarSecret(req: IAuthRequest, res: Response, next: Ne
  */
 export async function testarWebhook(req: IAuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const empresaId = (req.user as any).empresaId;
+        const user = getRequiredUser(req);
+        const empresaId = user.empresaId;
         const { webhookId } = req.params;
         if (!webhookId) {
             throw new AppError('Webhook ID Ã© obrigatÃ³rio', 400);
@@ -160,8 +178,9 @@ export async function testarWebhook(req: IAuthRequest, res: Response, next: Next
             sucesso: true,
             mensagem: 'Webhook de teste enviado com sucesso'
         });
-    } catch (error: any) {
-        logger.error(`[WebhookController] Erro ao testar webhook: ${error.message}`);
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`[WebhookController] Erro ao testar webhook: ${msg}`);
         next(error);
     }
 }
@@ -171,7 +190,8 @@ export async function testarWebhook(req: IAuthRequest, res: Response, next: Next
  */
 export async function buscarWebhook(req: IAuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-        const empresaId = (req.user as any).empresaId;
+        const user = getRequiredUser(req);
+        const empresaId = user.empresaId;
         const { webhookId } = req.params;
 
         const webhooks = await webhookService.listar(empresaId, { _id: webhookId });
@@ -184,8 +204,9 @@ export async function buscarWebhook(req: IAuthRequest, res: Response, next: Next
             sucesso: true,
             webhook: webhooks[0]
         });
-    } catch (error: any) {
-        logger.error(`[WebhookController] Erro ao buscar webhook: ${error.message}`);
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`[WebhookController] Erro ao buscar webhook: ${msg}`);
         next(error);
     }
 }

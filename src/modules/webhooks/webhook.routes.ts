@@ -3,80 +3,63 @@
  * Rotas de webhooks
  */
 import { Router } from 'express';
+import { z } from 'zod';
 import * as webhookController from './webhook.controller';
 import authMiddleware from '../../shared/infra/http/middlewares/auth.middleware';
 import adminAuthMiddleware from '../../shared/infra/http/middlewares/admin-auth.middleware';
-import { body, param } from 'express-validator';
 import logger from '../../shared/container/logger';
+import { validate } from '@shared/infra/http/middlewares/validate.middleware';
 
 const router = Router();
 
-// Validações
-const validarCriacaoWebhook = [
-    body('nome')
-        .trim()
-        .notEmpty().withMessage('Nome é obrigatório')
-        .isLength({ max: 100 }).withMessage('Nome não pode exceder 100 caracteres'),
-    body('url')
-        .trim()
-        .notEmpty().withMessage('URL é obrigatória')
-        .isURL().withMessage('URL inválida')
-        .matches(/^https?:\/\//).withMessage('URL deve começar com http:// ou https://'),
-    body('eventos')
-        .isArray({ min: 1 }).withMessage('Pelo menos um evento deve ser selecionado')
-        .custom((eventos) => {
-            const eventosValidos = [
-                'placa_disponivel', 'placa_alugada', 'contrato_criado',
-                'contrato_expirando', 'contrato_expirado', 'pi_criada',
-                'pi_aprovada', 'cliente_novo', 'aluguel_criado', 'aluguel_cancelado'
-            ];
-            return eventos.every((e: string) => eventosValidos.includes(e));
-        }).withMessage('Evento inválido detectado'),
-    body('retry_config.max_tentativas')
-        .optional()
-        .isInt({ min: 1, max: 5 }).withMessage('Max tentativas deve estar entre 1 e 5'),
-    body('retry_config.timeout_ms')
-        .optional()
-        .isInt({ min: 1000, max: 30000 }).withMessage('Timeout deve estar entre 1000 e 30000 ms')
-];
+const eventosValidos = [
+  'placa_disponivel', 'placa_alugada', 'contrato_criado',
+  'contrato_expirando', 'contrato_expirado', 'pi_criada',
+  'pi_aprovada', 'cliente_novo', 'aluguel_criado', 'aluguel_cancelado'
+] as const;
 
-const validarAtualizacaoWebhook = [
-    param('webhookId')
-        .isMongoId().withMessage('ID do webhook inválido'),
-    body('nome')
-        .optional()
-        .trim()
-        .isLength({ max: 100 }).withMessage('Nome não pode exceder 100 caracteres'),
-    body('url')
-        .optional()
-        .trim()
-        .isURL().withMessage('URL inválida')
-        .matches(/^https?:\/\//).withMessage('URL deve começar com http:// ou https://'),
-    body('eventos')
-        .optional()
-        .isArray({ min: 1 }).withMessage('Pelo menos um evento deve ser selecionado'),
-    body('ativo')
-        .optional()
-        .isBoolean().withMessage('Campo ativo deve ser boolean')
-];
+const webhookIdRegex = /^[0-9a-fA-F]{24}$/;
 
-const validarWebhookId = [
-    param('webhookId')
-        .isMongoId().withMessage('ID do webhook inválido')
-];
+const webhookIdParamsSchema = z.object({
+  params: z.object({
+    webhookId: z.string().regex(webhookIdRegex, 'ID do webhook invalido'),
+  }),
+});
 
-// Todas as rotas requerem autenticação de admin
+const createWebhookSchema = z.object({
+  body: z.object({
+    nome: z.string().trim().min(1, 'Nome e obrigatorio').max(100, 'Nome nao pode exceder 100 caracteres'),
+    url: z.string().trim().url('URL invalida').refine((url) => /^https?:\/\//.test(url), 'URL deve comecar com http:// ou https://'),
+    eventos: z.array(z.enum(eventosValidos)).min(1, 'Pelo menos um evento deve ser selecionado'),
+    retry_config: z.object({
+      max_tentativas: z.number().int().min(1).max(5).optional(),
+      timeout_ms: z.number().int().min(1000).max(30000).optional(),
+    }).optional(),
+  }),
+});
+
+const updateWebhookSchema = z.object({
+  params: z.object({
+    webhookId: z.string().regex(webhookIdRegex, 'ID do webhook invalido'),
+  }),
+  body: z.object({
+    nome: z.string().trim().max(100, 'Nome nao pode exceder 100 caracteres').optional(),
+    url: z.string().trim().url('URL invalida').refine((url) => /^https?:\/\//.test(url), 'URL deve comecar com http:// ou https://').optional(),
+    eventos: z.array(z.enum(eventosValidos)).min(1, 'Pelo menos um evento deve ser selecionado').optional(),
+    ativo: z.boolean().optional(),
+  }),
+});
+
 router.use(authMiddleware);
 router.use(adminAuthMiddleware);
 
-// Rotas
 router.get('/', webhookController.listarWebhooks);
-router.post('/', validarCriacaoWebhook, webhookController.criarWebhook);
-router.get('/:webhookId', validarWebhookId, webhookController.buscarWebhook);
-router.put('/:webhookId', validarAtualizacaoWebhook, webhookController.atualizarWebhook);
-router.delete('/:webhookId', validarWebhookId, webhookController.removerWebhook);
-router.post('/:webhookId/regenerar-secret', validarWebhookId, webhookController.regenerarSecret);
-router.post('/:webhookId/testar', validarWebhookId, webhookController.testarWebhook);
+router.post('/', validate(createWebhookSchema), webhookController.criarWebhook);
+router.get('/:webhookId', validate(webhookIdParamsSchema), webhookController.buscarWebhook);
+router.put('/:webhookId', validate(updateWebhookSchema), webhookController.atualizarWebhook);
+router.delete('/:webhookId', validate(webhookIdParamsSchema), webhookController.removerWebhook);
+router.post('/:webhookId/regenerar-secret', validate(webhookIdParamsSchema), webhookController.regenerarSecret);
+router.post('/:webhookId/testar', validate(webhookIdParamsSchema), webhookController.testarWebhook);
 
 logger.info('[Routes Webhook] Rotas de webhooks configuradas');
 

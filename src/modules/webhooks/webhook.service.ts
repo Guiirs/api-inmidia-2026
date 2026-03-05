@@ -5,11 +5,38 @@
 // src/modules/webhooks/webhook.service.ts
 import axios from 'axios';
 import crypto from 'crypto';
+import { Types } from 'mongoose';
 import Webhook from './Webhook';
 import logger from '../../shared/container/logger';
 
-type WebhookDoc = any;
-type WebhookPayload = Record<string, any>;
+type WebhookPayload = Record<string, unknown>;
+type WebhookFilters = Record<string, unknown>;
+
+interface WebhookRetryConfig {
+  max_tentativas?: number;
+  timeout_ms?: number;
+}
+
+interface WebhookDoc {
+  _id: Types.ObjectId | string;
+  nome: string;
+  url: string;
+  ativo: boolean;
+  eventos: string[];
+  secret: string;
+  headers?: Map<string, string> | Record<string, string>;
+  retry_config?: WebhookRetryConfig;
+  registrarDisparo: (sucesso: boolean, detalhes?: string) => Promise<void>;
+  save: () => Promise<void>;
+  toObject: () => Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface SecretRegeneratedResult {
+  webhook_id: string;
+  secret: string;
+  mensagem: string;
+}
 
 class WebhookService {
   private getErrorMessage(error: unknown): string {
@@ -60,13 +87,18 @@ class WebhookService {
 
         const signature = this._gerarAssinatura(webhookPayload, webhook.secret);
 
+        const normalizedHeaders: Record<string, string> =
+          webhook.headers instanceof Map
+            ? Object.fromEntries(webhook.headers)
+            : (webhook.headers || {});
+
         const headers = {
           'Content-Type': 'application/json',
           'X-Webhook-Signature': signature,
           'X-Webhook-Event': evento,
           'X-Webhook-Tentativa': tentativa,
           'User-Agent': 'InMidia-Webhook/1.0',
-          ...Object.fromEntries(webhook.headers || {}),
+          ...normalizedHeaders,
         };
 
         await axios.post(webhook.url, webhookPayload, {
@@ -78,10 +110,10 @@ class WebhookService {
         await webhook.registrarDisparo(true);
         logger.info(`[WebhookService] Webhook ${webhook.nome} disparado com sucesso (tentativa ${tentativa})`);
         return;
-      } catch (error: any) {
-        const detalhes = error?.response
-          ? `HTTP ${error.response.status}: ${error.response.statusText}`
-          : (error?.message || 'Erro desconhecido');
+      } catch (error: unknown) {
+        const detalhes = axios.isAxiosError(error)
+          ? `HTTP ${error.response?.status ?? 'sem status'}: ${error.response?.statusText ?? error.message}`
+          : this.getErrorMessage(error);
 
         logger.warn(`[WebhookService] Falha no webhook ${webhook.nome} (tentativa ${tentativa}/${maxTentativas}): ${detalhes}`);
 
@@ -107,7 +139,7 @@ class WebhookService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async criar(dados: WebhookPayload, userId: string): Promise<any> {
+  async criar(dados: WebhookPayload, userId: string): Promise<Record<string, unknown>> {
     try {
       const secret = crypto.randomBytes(32).toString('hex');
 
@@ -120,7 +152,7 @@ class WebhookService {
       await webhook.save();
       logger.info(`[WebhookService] Webhook criado: ${webhook.nome} (${webhook._id})`);
 
-      const webhookObj = webhook.toObject() as Record<string, any>;
+      const webhookObj = webhook.toObject() as unknown as Record<string, unknown>;
       delete webhookObj.secret;
 
       return webhookObj;
@@ -130,21 +162,21 @@ class WebhookService {
     }
   }
 
-  async listar(empresaId: string, filtros: Record<string, any> = {}): Promise<any[]> {
+  async listar(empresaId: string, filtros: WebhookFilters = {}): Promise<WebhookDoc[]> {
     try {
-      const query: Record<string, any> = { empresaId, ...filtros };
+      const query: Record<string, unknown> = { empresaId, ...filtros };
       const webhooks = await Webhook.find(query)
         .sort({ createdAt: -1 })
         .populate('criado_por', 'username email');
 
-      return webhooks;
+      return webhooks as unknown as WebhookDoc[];
     } catch (error: unknown) {
       logger.error(`[WebhookService] Erro ao listar webhooks: ${this.getErrorMessage(error)}`);
       throw error;
     }
   }
 
-  async atualizar(webhookId: string, empresaId: string, dados: Record<string, any>): Promise<any> {
+  async atualizar(webhookId: string, empresaId: string, dados: WebhookFilters): Promise<WebhookDoc> {
     try {
       const webhook = await Webhook.findOne({ _id: webhookId, empresa: empresaId });
 
@@ -155,14 +187,14 @@ class WebhookService {
       const camposPermitidos = ['nome', 'url', 'eventos', 'ativo', 'retry_config', 'headers'];
       camposPermitidos.forEach((campo: string) => {
         if (dados[campo] !== undefined) {
-          (webhook as any)[campo] = dados[campo];
+          (webhook as unknown as Record<string, unknown>)[campo] = dados[campo];
         }
       });
 
       await webhook.save();
       logger.info(`[WebhookService] Webhook atualizado: ${webhook.nome} (${webhook._id})`);
 
-      return webhook;
+      return webhook as unknown as WebhookDoc;
     } catch (error: unknown) {
       logger.error(`[WebhookService] Erro ao atualizar webhook: ${this.getErrorMessage(error)}`);
       throw error;
@@ -185,7 +217,7 @@ class WebhookService {
     }
   }
 
-  async regenerarSecret(webhookId: string, empresaId: string): Promise<any> {
+  async regenerarSecret(webhookId: string, empresaId: string): Promise<SecretRegeneratedResult> {
     try {
       const webhook = await Webhook.findOne({ _id: webhookId, empresa: empresaId });
 
@@ -199,7 +231,7 @@ class WebhookService {
       logger.info(`[WebhookService] Secret regenerado para webhook: ${webhook.nome}`);
 
       return {
-        webhook_id: webhook._id,
+        webhook_id: String(webhook._id),
         secret: webhook.secret,
         mensagem: 'Secret regenerado com sucesso. Guarde-o em local seguro, nao sera exibido novamente.',
       };
@@ -223,7 +255,7 @@ class WebhookService {
         empresa_id: empresaId,
       };
 
-      await this._dispararWebhook(webhook, 'teste', payloadTeste);
+      await this._dispararWebhook(webhook as unknown as WebhookDoc, 'teste', payloadTeste);
 
       return { sucesso: true, mensagem: 'Webhook de teste enviado' };
     } catch (error: unknown) {

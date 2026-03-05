@@ -24,7 +24,9 @@ import {
   validatePlacaImage,
   toListItems,
   type PlacaEntity,
-  type PaginatedPlacasResponse
+  type PaginatedPlacasResponse,
+  type CreatePlacaDTO,
+  type UpdatePlacaDTO
 } from '../dtos/placa.dto';
 
 interface S3File {
@@ -35,6 +37,17 @@ interface S3File {
   originalname: string;
   size: number;
 }
+
+type PersistencePayload = Record<string, unknown> & {
+  imagem?: string | null;
+  regiao?: string;
+  regiaoId?: string;
+  localizacao?: string | null;
+  nomeDaRua?: string | null;
+  coordenadas?: string | { latitude?: number; longitude?: number } | null;
+  ativa?: boolean;
+  disponivel?: boolean;
+};
 
 export class PlacaService {
   constructor(private readonly repository: IPlacaRepository) {}
@@ -78,11 +91,11 @@ export class PlacaService {
           empresaId
         });
 
-        (persistenceData as any).imagem = path.basename(file.key);
+        persistenceData.imagem = path.basename(file.key);
       }
 
       // Criar placa via repository
-      const result = await this.repository.create(persistenceData as any, empresaId);
+      const result = await this.repository.create(persistenceData as CreatePlacaDTO, empresaId);
 
       if (result.isFailure) {
         return Result.fail(result.error);
@@ -163,7 +176,7 @@ export class PlacaService {
           filename: file.originalname
         });
 
-        (persistenceData as any).imagem = path.basename(file.key);
+        persistenceData.imagem = path.basename(file.key);
 
         // Apagar imagem antiga se existir
         if (placaExistente.imagem) {
@@ -178,7 +191,7 @@ export class PlacaService {
             });
           }
         }
-      } else if ('imagem' in persistenceData && (persistenceData as any).imagem === null) {
+      } else if ('imagem' in persistenceData && persistenceData.imagem === null) {
         // Remover imagem explicitamente
         if (placaExistente.imagem) {
           const imagemKey = `placas/${placaExistente.imagem}`;
@@ -192,11 +205,11 @@ export class PlacaService {
             });
           }
         }
-        (persistenceData as any).imagem = undefined;
+        persistenceData.imagem = undefined;
       }
 
       // Atualizar via repository
-      const result = await this.repository.update(id, persistenceData as any, empresaId);
+      const result = await this.repository.update(id, persistenceData as UpdatePlacaDTO, empresaId);
 
       if (result.isFailure) {
         return Result.fail(result.error);
@@ -432,14 +445,20 @@ export class PlacaService {
   private async enrichWithAluguelData(
     placas: PlacaEntity[],
     empresaId: string
-  ): Promise<Array<PlacaEntity & any>> {
+  ): Promise<Array<PlacaEntity & {
+    cliente_nome?: string;
+    aluguel_data_inicio?: Date;
+    aluguel_data_fim?: Date;
+    aluguel_ativo?: boolean;
+    aluguel_futuro?: boolean;
+    statusAluguel?: 'disponivel' | 'alugada' | 'reservada';
+  }>> {
     if (placas.length === 0) return [];
 
     const hoje = new Date();
-    const placaIds = placas.map(p => p._id);
+    const placaIds = placas.map((p) => p._id);
 
     try {
-      // Buscar aluguéis ativos ou futuros
       const alugueisAtivos = await Aluguel.find({
         $and: [
           {
@@ -462,67 +481,89 @@ export class PlacaService {
           }
         ]
       })
-      .sort({ startDate: 1, data_inicio: 1 })
-      .populate('clienteId', 'nome')
-      .lean();
+        .sort({ startDate: 1, data_inicio: 1 })
+        .populate('clienteId', 'nome')
+        .lean();
 
-      // Mapear aluguéis por placa
-      const aluguelMap = alugueisAtivos.reduce((map: any, aluguel: any) => {
+      const aluguelMap = alugueisAtivos.reduce<Record<string, {
+        startDate: Date;
+        endDate: Date;
+        cliente?: { nome?: string };
+      }>>((map, aluguelDoc) => {
+        const aluguel = aluguelDoc as unknown as {
+          placaId?: { toString(): string } | string;
+          placa?: { toString(): string } | string;
+          startDate?: Date;
+          endDate?: Date;
+          data_inicio?: Date;
+          data_fim?: Date;
+          clienteId?: { nome?: string };
+          cliente?: { nome?: string };
+        };
+
         const placaId = (aluguel.placaId || aluguel.placa)?.toString();
         if (placaId && !map[placaId]) {
-          const normalizado = {
-            ...aluguel,
-            startDate: aluguel.startDate || aluguel.data_inicio,
-            endDate: aluguel.endDate || aluguel.data_fim,
+          map[placaId] = {
+            startDate: aluguel.startDate || aluguel.data_inicio || hoje,
+            endDate: aluguel.endDate || aluguel.data_fim || hoje,
             cliente: aluguel.clienteId || aluguel.cliente
           };
-          map[placaId] = normalizado;
         }
+
         return map;
       }, {});
 
-      // Enriquecer placas
-      return placas.map((placa: any) => {
+      return placas.map((placa) => {
+        const placaEnriquecida: PlacaEntity & {
+          cliente_nome?: string;
+          aluguel_data_inicio?: Date;
+          aluguel_data_fim?: Date;
+          aluguel_ativo?: boolean;
+          aluguel_futuro?: boolean;
+          statusAluguel?: 'disponivel' | 'alugada' | 'reservada';
+        } = {
+          ...placa,
+          aluguel_ativo: false,
+          aluguel_futuro: false,
+          statusAluguel: 'disponivel'
+        };
+
         const aluguel = aluguelMap[placa._id.toString()];
         if (aluguel && aluguel.cliente) {
           const dataInicio = new Date(aluguel.startDate);
           const dataFim = new Date(aluguel.endDate);
 
-          placa.cliente_nome = aluguel.cliente.nome;
-          placa.aluguel_data_inicio = aluguel.startDate;
-          placa.aluguel_data_fim = aluguel.endDate;
-          placa.aluguel_ativo = true;
-          placa.aluguel_futuro = dataInicio > hoje;
+          placaEnriquecida.cliente_nome = aluguel.cliente.nome;
+          placaEnriquecida.aluguel_data_inicio = aluguel.startDate;
+          placaEnriquecida.aluguel_data_fim = aluguel.endDate;
+          placaEnriquecida.aluguel_ativo = true;
+          placaEnriquecida.aluguel_futuro = dataInicio > hoje;
 
           if (dataInicio > hoje) {
-            placa.statusAluguel = 'reservada';
+            placaEnriquecida.statusAluguel = 'reservada';
           } else if (dataFim >= hoje) {
-            placa.statusAluguel = 'alugada';
-          } else {
-            placa.statusAluguel = 'disponivel';
+            placaEnriquecida.statusAluguel = 'alugada';
           }
-        } else {
-          placa.aluguel_ativo = false;
-          placa.aluguel_futuro = false;
-          placa.statusAluguel = 'disponivel';
         }
-        return placa;
+
+        return placaEnriquecida;
       });
     } catch (error) {
       Log.warn('[PlacaService] Erro ao enriquecer com dados de aluguel', {
         error: toDomainError(error).message
       });
-      return placas as any;
+      return placas;
     }
   }
-
   /**
    * Aceita payload legado do frontend e converte para o shape validado pelo DTO refatorado.
    */
-  private normalizeIncomingPayload(data: unknown): any {
+  private normalizeIncomingPayload(data: unknown): PersistencePayload | unknown {
     if (!data || typeof data !== 'object') return data;
 
-    const payload: any = { ...(data as any) };
+    const payload: PersistencePayload = {
+      ...(data as Record<string, unknown>)
+    } as PersistencePayload;
 
     if (!payload.regiaoId && payload.regiao) {
       payload.regiaoId = payload.regiao;
@@ -552,8 +593,10 @@ export class PlacaService {
   /**
    * Normaliza o payload validado para o schema persistido atual (legado).
    */
-  private normalizeForPersistence(data: any): any {
-    const payload: any = { ...(data || {}) };
+  private normalizeForPersistence(data: unknown): PersistencePayload {
+    const payload: PersistencePayload = {
+      ...((data && typeof data === 'object') ? (data as Record<string, unknown>) : {})
+    };
 
     if (!payload.nomeDaRua && payload.localizacao) {
       payload.nomeDaRua = payload.localizacao;
@@ -573,3 +616,4 @@ export class PlacaService {
     return payload;
   }
 }
+

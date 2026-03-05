@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Contrato DTOs & Validation Schemas
  */
 
@@ -10,36 +10,22 @@ import { ValidationMessages } from '@shared/validators/validation-messages';
 // ZOD SCHEMAS
 // ============================================
 
-/**
- * Schema para criação de contrato
- */
 export const CreateContratoSchema = z.object({
-  piId: z.string()
-    .min(1, ValidationMessages.required('PI'))
+  piId: z.string().min(1, ValidationMessages.required('PI')),
 });
 
-/**
- * Schema para atualização de contrato
- */
 export const UpdateContratoSchema = z.object({
-  status: z.enum(['rascunho', 'ativo', 'concluido', 'cancelado'])
-    .optional(),
-  numero: z.string()
-    .min(1)
-    .max(100)
-    .optional()
+  status: z.enum(['rascunho', 'ativo', 'concluido', 'cancelado']).optional(),
+  numero: z.string().min(1).max(100).optional(),
 });
 
-/**
- * Schema para query de listagem
- */
 export const ListContratosQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
   sortBy: z.enum(['createdAt', 'numero', 'status']).default('createdAt'),
   order: z.enum(['asc', 'desc']).default('desc'),
   status: z.enum(['rascunho', 'ativo', 'concluido', 'cancelado']).optional(),
-  clienteId: z.string().optional()
+  clienteId: z.string().optional(),
 });
 
 // ============================================
@@ -54,23 +40,17 @@ export type ListContratosQueryDTO = z.infer<typeof ListContratosQuerySchema>;
 // RESPONSE TYPES
 // ============================================
 
-/**
- * Contrato completo (entidade)
- */
 export interface ContratoEntity {
   _id: Types.ObjectId;
   empresaId: Types.ObjectId | { _id: Types.ObjectId; nome: string };
   clienteId: Types.ObjectId | { _id: Types.ObjectId; nome: string };
-  piId: Types.ObjectId | any;
+  piId: Types.ObjectId | Record<string, unknown>;
   numero: string;
   status: 'rascunho' | 'ativo' | 'concluido' | 'cancelado';
   createdAt: Date;
   updatedAt: Date;
 }
 
-/**
- * Contrato resumido para listagem
- */
 export interface ContratoListItem {
   id: string;
   numero: string;
@@ -80,9 +60,6 @@ export interface ContratoListItem {
   updatedAt: Date;
 }
 
-/**
- * Resultado paginado
- */
 export interface PaginatedContratosResponse {
   data: ContratoListItem[];
   pagination: {
@@ -96,26 +73,17 @@ export interface PaginatedContratosResponse {
 }
 
 // ============================================
-// HELPERS DE VALIDAÇÃO
+// HELPERS DE VALIDACAO
 // ============================================
 
-/**
- * Valida dados de criação
- */
 export function validateCreateContrato(data: unknown): CreateContratoDTO {
   return CreateContratoSchema.parse(data);
 }
 
-/**
- * Valida dados de atualização
- */
 export function validateUpdateContrato(data: unknown): UpdateContratoDTO {
   return UpdateContratoSchema.parse(data);
 }
 
-/**
- * Valida query de listagem
- */
 export function validateListQuery(data: unknown): ListContratosQueryDTO {
   return ListContratosQuerySchema.parse(data);
 }
@@ -124,14 +92,19 @@ export function validateListQuery(data: unknown): ListContratosQueryDTO {
 // TRANSFORMERS
 // ============================================
 
-/**
- * Converte ContratoEntity para ContratoListItem
- */
-export function toListItem(contrato: ContratoEntity & any): ContratoListItem {
+type ContratoListSource = ContratoEntity & {
+  clienteId: Types.ObjectId | { _id?: Types.ObjectId; nome?: string };
+};
+
+function hasNome(value: unknown): value is { nome?: string } {
+  return typeof value === 'object' && value !== null && 'nome' in value;
+}
+
+export function toListItem(contrato: ContratoListSource): ContratoListItem {
   const cliente = contrato.clienteId;
-  const clienteNome = typeof cliente === 'object' && cliente?.nome 
-    ? cliente.nome 
-    : 'Cliente não informado';
+  const clienteNome = hasNome(cliente) && cliente.nome
+    ? cliente.nome
+    : 'Cliente nao informado';
 
   return {
     id: contrato._id.toString(),
@@ -139,13 +112,10 @@ export function toListItem(contrato: ContratoEntity & any): ContratoListItem {
     cliente_nome: clienteNome,
     status: contrato.status,
     createdAt: contrato.createdAt,
-    updatedAt: contrato.updatedAt
+    updatedAt: contrato.updatedAt,
   };
 }
 
-/**
- * Converte array de ContratoEntity para ContratoListItem[]
- */
-export function toListItems(contratos: Array<ContratoEntity & any>): ContratoListItem[] {
+export function toListItems(contratos: ContratoListSource[]): ContratoListItem[] {
   return contratos.map(toListItem);
 }

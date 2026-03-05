@@ -14,6 +14,8 @@ export interface IEnvironment {
   JWT_EXPIRES_IN: string;
   
   // Redis
+  REDIS_ENABLED?: string;
+  REDIS_URL?: string;
   REDIS_HOST?: string;
   REDIS_PORT?: string;
   REDIS_PASSWORD?: string;
