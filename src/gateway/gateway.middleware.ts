@@ -88,8 +88,6 @@ function getRouteRateLimiter(routePath: string, windowMs: number, max: number) {
 
   return limiter;
 }
-  return routeLimiters.get(key)!;
-}
 
 function hasAuthContext(req: Request): boolean {
   return Boolean((req as any).user?.id || (req as any).user?.empresaId);
