@@ -44,12 +44,12 @@ class PublicApiService {
     return new mongoose.Types.ObjectId(String(empresa_id));
   }
 
-  private mapPublicPlaca(placa: any) {
+  private mapPublicPlaca(placa: any, includeImagemUrl = true) {
     const regiaoObj = placa.regiaoId && typeof placa.regiaoId === 'object'
       ? placa.regiaoId
       : (placa.regiao && typeof placa.regiao === 'object' ? placa.regiao : null);
 
-    return {
+    const mapped = {
       id: placa._id?.toString?.() || placa.id || null,
       _id: placa._id?.toString?.() || placa.id || null,
       numero_placa: placa.numero_placa || null,
@@ -67,6 +67,12 @@ class PublicApiService {
         : null,
       regiao_nome: regiaoObj?.nome || null,
     };
+
+    if (includeImagemUrl) {
+      mapped.imagem_url = this.buildImagemUrl(placa.imagem);
+    }
+
+    return mapped;
   }
 
   private mapPublicRegiao(regiao: any) {
@@ -113,7 +119,6 @@ class PublicApiService {
         nomeDaRua: placa.nomeDaRua || null,
         tamanho: placa.tamanho || null,
         imagem: placa.imagem || null,
-        imagem_url: this.buildImagemUrl(placa.imagem),
         regiao: placa.regiao?.nome || placa.regiaoId?.nome || null,
       }));
     } catch (error: any) {
@@ -180,7 +185,7 @@ class PublicApiService {
     ]);
 
     return {
-      data: placas.map((placa: any) => this.mapPublicPlaca(placa)),
+      data: placas.map((placa: any) => this.mapPublicPlaca(placa, true)),
       pagination: {
         totalDocs: total,
         totalPages: Math.ceil(total / limit) || 1,
