@@ -19,6 +19,28 @@ interface CircuitState {
 const circuitStates = new Map<string, CircuitState>();
 const routeLimiters = new Map<string, ReturnType<typeof createRouteRateLimiter>>();
 
+function buildRateLimiterKey(routePath: string, windowMs: number, max: number): string {
+  return `${routePath}#${windowMs}#${max}`;
+}
+
+function preloadRouteLimiters(): void {
+  gatewayConfig.routes.forEach((route) => {
+    if (!route.rateLimit) {
+      return;
+    }
+
+    const limiterKey = buildRateLimiterKey(route.path, route.rateLimit.windowMs, route.rateLimit.max);
+    if (!routeLimiters.has(limiterKey)) {
+      routeLimiters.set(
+        limiterKey,
+        createRouteRateLimiter(route.path, route.rateLimit.max, route.rateLimit.windowMs)
+      );
+    }
+  });
+}
+
+preloadRouteLimiters();
+
 function getCircuitState(module: string): CircuitState {
   if (!circuitStates.has(module)) {
     circuitStates.set(module, {
@@ -57,10 +79,15 @@ function recordSuccess(module: string): void {
 }
 
 function getRouteRateLimiter(routePath: string, windowMs: number, max: number) {
-  const key = `${routePath}#${windowMs}#${max}`;
-  if (!routeLimiters.has(key)) {
-    routeLimiters.set(key, createRouteRateLimiter(routePath, max, windowMs));
+  const key = buildRateLimiterKey(routePath, windowMs, max);
+  const limiter = routeLimiters.get(key);
+
+  if (!limiter) {
+    throw new Error(`[Gateway] Rate limiter não inicializado para rota ${routePath}`);
   }
+
+  return limiter;
+}
   return routeLimiters.get(key)!;
 }
 
