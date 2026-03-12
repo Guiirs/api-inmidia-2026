@@ -77,6 +77,7 @@ export type LoginInput = z.infer<typeof LoginSchema>;
 export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
 export type RequestPasswordResetInput = z.infer<typeof RequestPasswordResetSchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+export type RefreshInput = z.infer<typeof RefreshSchema>;
 
 /**
  * Payload do token JWT
@@ -106,6 +107,11 @@ export interface LoginResponse {
   };
 }
 
+export interface RefreshResponse {
+  token: string;
+  refreshToken: string;
+}
+
 /**
  * Resposta de alteração de senha
  */
@@ -131,4 +137,12 @@ export const validateRequestPasswordReset = (data: unknown): RequestPasswordRese
 
 export const validateResetPassword = (data: unknown): ResetPasswordInput => {
   return ResetPasswordSchema.parse(data);
+};
+
+export const RefreshSchema = z.object({
+  refreshToken: z.string().min(1, ValidationMessages.required('Refresh token')),
+});
+
+export const validateRefresh = (data: unknown): RefreshInput => {
+  return RefreshSchema.parse(data);
 };

@@ -6,22 +6,26 @@ import AppError from '@shared/container/AppError';
 
 /**
  * Autenticacao para SSE.
- * Utiliza exclusivamente Authorization Bearer por header para evitar vazamento em query string.
+ * EventSource não permite cabeçalhos customizados, por isso o frontend envia o
+ * token na querystring. O middleware ainda prioriza o header quando presente
+ * (Bearer) mas cairá no parâmetro `?token=` como fallback compatível.
  */
 const sseAuthMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
   try {
     const authHeader = req.headers['authorization'];
+    const queryToken =
+      typeof req.query?.token === 'string' ? req.query.token.trim() : undefined;
     const token =
       typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
         ? authHeader.slice(7).trim()
-        : undefined;
+        : queryToken;
 
     if (!token) {
       logger.warn('[SSEAuthMiddleware] Token ausente.');
       throw new AppError('Token nÃ£o fornecido.', 401);
     }
 
-    const decoded = jwt.verify(token, config.jwtSecret) as any;
+    const decoded = jwt.verify(token, config.jwtSecret, { clockTolerance: 45 }) as any;
 
     if (!decoded || !decoded.id || !decoded.email) {
       logger.warn('[SSEAuthMiddleware] Payload JWT invÃ¡lido.');

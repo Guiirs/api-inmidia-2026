@@ -3,6 +3,8 @@
  */
 
 import jwt, { SignOptions } from 'jsonwebtoken';
+import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 import { Result, InvalidCredentialsError, NotFoundError, BusinessRuleViolationError } from '@shared/core';
 import config from '@config/config';
 import emailService from '@shared/container/email.service';
@@ -33,10 +35,26 @@ export class AuthService {
     );
   }
 
+  private async generateRefreshToken(): Promise<{ token: string; hashed: string }> {
+    // random opaque string
+    const token = crypto.randomBytes(32).toString('hex');
+    // store hashed version for security
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(token, salt);
+    return { token, hashed };
+  }
+
+  private async isRefreshTokenValid(user: IUser, providedToken: string): Promise<boolean> {
+    if (!user.refreshToken || !user.refreshTokenExpiry) return false;
+    if (user.refreshTokenExpiry < new Date()) return false;
+    const match = await bcrypt.compare(providedToken, user.refreshToken);
+    return match;
+  }
+
   /**
    * Login do usuário
    */
-  async login(input: LoginInput): Promise<Result<LoginResponse, InvalidCredentialsError | NotFoundError>> {
+  async login(input: LoginInput): Promise<Result<LoginResponse & { refreshToken: string }, InvalidCredentialsError | NotFoundError>> {
     try {
       // Busca usuário
       const userResult = await this.repository.findByUsernameOrEmail(input.usernameOrEmail);
@@ -70,9 +88,15 @@ export class AuthService {
 
       const token = this.generateToken(payload);
 
+      // Refresh token
+      const { token: refreshToken, hashed } = await this.generateRefreshToken();
+      const expiryDate = new Date(Date.now() + this.parseDuration(config.jwtRefreshExpiresIn));
+      await this.repository.saveRefreshToken(user._id.toString(), hashed, expiryDate);
+
       // Resposta
-      const response: LoginResponse = {
+      const response: LoginResponse & { refreshToken: string } = {
         token,
+        refreshToken,
         user: {
           id: user._id.toString(),
           username: user.username,
@@ -209,6 +233,43 @@ export class AuthService {
     try {
       jwt.verify(token, config.jwtSecret);
       return Result.ok(undefined);
+    } catch {
+      return Result.fail(new InvalidCredentialsError());
+    }
+  }
+
+  /**
+   * Tenta renovar o token de acesso a partir de um refresh token válido.
+   */
+  async refreshToken(oldRefresh: string): Promise<Result<{ token: string; refreshToken: string }, InvalidCredentialsError>> {
+    try {
+      const userRes = await this.repository.findByRefreshToken(oldRefresh);
+      if (userRes.isFailure || !userRes.value) {
+        return Result.fail(new InvalidCredentialsError());
+      }
+      const user = userRes.value;
+
+      const valid = await this.isRefreshTokenValid(user, oldRefresh);
+      if (!valid) {
+        return Result.fail(new InvalidCredentialsError());
+      }
+
+      // gerar novo access token
+      const payload: JwtPayload = {
+        id: user._id.toString(),
+        empresaId: (user.empresa || user.empresaId).toString(),
+        role: user.role,
+        username: user.username,
+        email: user.email,
+      };
+      const token = this.generateToken(payload);
+
+      // rotate refresh token
+      const { token: refreshToken, hashed: newHash } = await this.generateRefreshToken();
+      const expiryDate = new Date(Date.now() + this.parseDuration(config.jwtRefreshExpiresIn));
+      await this.repository.saveRefreshToken(user._id.toString(), newHash, expiryDate);
+
+      return Result.ok({ token, refreshToken });
     } catch {
       return Result.fail(new InvalidCredentialsError());
     }

@@ -35,7 +35,9 @@ const authenticateToken = (
 
     let decoded: IUserPayload;
     try {
-      decoded = jwt.verify(token, config.jwtSecret) as IUserPayload;
+      // jwt.verify returns Jwt | string | object; cast through unknown to satisfy
+      // IUserPayload interface without TypeScript complaining about overlap.
+      decoded = (jwt.verify(token, config.jwtSecret, { clockTolerance: 45 }) as unknown) as IUserPayload;
     } catch (error: unknown) {
       if (error instanceof TokenExpiredError) {
         logger.warn('[AuthMiddleware] Token expirado.');

@@ -12,6 +12,7 @@ import type { IAuthenticatedSocket } from '../../../types/socket';
 
 // Services and Middlewares (imported for Socket.IO and other features)
 import socketAuthMiddleware from './middlewares/socket-auth.middleware';
+import { gatewayConfig } from '@gateway/gateway.config';
 import notificationService from '@shared/container/notification.service';
 import whatsappService from '@modules/whatsapp/whatsapp.service';
 import QueueService from '@shared/container/queue.service';
@@ -111,6 +112,8 @@ if (process.env.NODE_ENV !== 'test') {
         logger.info(`🚀 Server running in ${config.nodeEnv} mode on port ${PORT}`);
         logger.info(`📚 API Documentation: http://localhost:${PORT}/api/v1/docs`);
         logger.info(`🔌 Socket.IO: ws://localhost:${PORT}`);
+        // Print gateway route patterns to help detect stale builds in prod
+        logger.info('[Gateway] active routes: ' + gatewayConfig.routes.map(r => r.path).join(', '));
 
         // Schedule cron jobs (disabled - scripts folder removed)
         // scheduleJobs();

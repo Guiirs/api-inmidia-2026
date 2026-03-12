@@ -9,6 +9,8 @@ import { AuthService } from './services/auth.service';
 import { AuthController } from './controllers/auth.controller';
 import authenticateToken from '@middlewares/auth.middleware';
 import { authRateLimiter } from '@shared/infra/http/middlewares/rate-limit.middleware';
+import { validate } from '@shared/infra/http/middlewares/validate.middleware';
+import { RefreshSchema, LoginSchema, RequestPasswordResetSchema, ResetPasswordSchema, ChangePasswordSchema } from './dtos/auth.dto';
 
 const router = Router();
 
@@ -21,6 +23,7 @@ const controller = new AuthController(service);
 router.post(
   '/login',
   authRateLimiter,
+  validate(LoginSchema),
   controller.login
 );
 
@@ -28,13 +31,23 @@ router.post(
 router.post(
   '/change-password',
   authenticateToken,
+  validate(ChangePasswordSchema),
   controller.changePassword
+);
+
+// POST /api/v1/auth/refresh - Renova tokens (público)
+router.post(
+  '/refresh',
+  authRateLimiter,
+  validate(RefreshSchema),
+  controller.refresh
 );
 
 // POST /api/v1/auth/forgot-password - Solicitar reset de senha (público)
 router.post(
   '/forgot-password',
   authRateLimiter,
+  validate(RequestPasswordResetSchema),
   controller.forgotPassword
 );
 
@@ -42,6 +55,7 @@ router.post(
 router.post(
   '/reset-password/:token',
   authRateLimiter,
+  validate(ResetPasswordSchema),
   controller.resetPassword
 );
 

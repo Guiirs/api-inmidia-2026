@@ -65,6 +65,16 @@ export const gatewayConfig: GatewayConfig = {
         max: 100,
       },
     },
+    // both singular and plural are accepted to avoid mismatch between
+    // frontend requests and historical builds. the plural form existed in
+    // earlier releases, so keeping both patterns prevents 401s if a stale
+    // dist/ was deployed by mistake.
+    {
+      path: '/api/v1/user/*',
+      target: 'local',
+      module: 'users',
+      requiresAuth: true,
+    },
     {
       path: '/api/v1/users/*',
       target: 'local',
@@ -221,6 +231,16 @@ export const gatewayConfig: GatewayConfig = {
       rateLimit: {
         windowMs: 15 * 60 * 1000,
         max: 1000,
+      },
+    },
+    {
+      path: '/api/v1/sse/*',
+      target: 'local',
+      module: 'sse',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 120,
       },
     },
     {

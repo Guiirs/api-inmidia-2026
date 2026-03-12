@@ -4,6 +4,7 @@
   "main": "dist/shared/infra/http/server.js",
   "scripts": {
     "build": "tsc && tsc-alias",
+    "prestart": "npm run build",
     "start": "cross-env NODE_ENV=production node dist/shared/infra/http/server.js",
     "dev": "cross-env NODE_ENV=development nodemon --exec ts-node src/shared/infra/http/server.ts",
     "dev:redis": "powershell -ExecutionPolicy Bypass -File ./start-with-redis.ps1",

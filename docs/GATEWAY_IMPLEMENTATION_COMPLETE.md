@@ -77,7 +77,7 @@ Versão: 1.0.0
 
 ### Core Domain (4 módulos)
 - ✅ auth - `/api/v1/auth`
-- ✅ users - `/api/v1/user`
+- ✅ users - `/api/v1/user` (e alias `/api/v1/users` para compatibilidade com builds antigos)
 - ✅ empresas - `/api/v1/empresa`
 - ✅ admin - `/api/v1/admin`
 

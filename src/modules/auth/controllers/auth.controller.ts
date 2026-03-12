@@ -7,6 +7,7 @@ import { Log } from '@shared/core';
 import { getErrorStatusCode } from '@shared/core';
 import type { AuthService } from '../services/auth.service';
 import type { IAuthRequest } from '../../../types/express';
+import type { RefreshInput, RefreshResponse } from '../dtos/auth.dto';
 
 export class AuthController {
   
@@ -40,6 +41,37 @@ export class AuthController {
       res.status(500).json({
         success: false,
         error: 'Erro interno ao fazer login',
+        code: 'INTERNAL_ERROR'
+      });
+    }
+  };
+
+  /**
+   * POST /auth/refresh
+   * Renova tokens usando refresh token
+   */
+  refresh = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const input = req.body as RefreshInput;
+      const result = await this.service.refreshToken(input.refreshToken);
+      if (result.isFailure) {
+        const statusCode = getErrorStatusCode(result.error);
+        res.status(statusCode).json({
+          success: false,
+          error: result.error.message,
+          code: result.error.code,
+        });
+        return;
+      }
+      res.status(200).json({
+        success: true,
+        data: result.value as RefreshResponse,
+      });
+    } catch (error) {
+      Log.error('[AuthController] Erro ao renovar token', { error });
+      res.status(500).json({
+        success: false,
+        error: 'Erro interno ao renovar token',
         code: 'INTERNAL_ERROR'
       });
     }

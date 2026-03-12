@@ -189,6 +189,7 @@ export interface PlacaListItem {
   disponivel?: boolean;
   ativa: boolean;
   imagem?: string;
+  imagem_url?: string | null;
   // Dados de aluguel (se houver)
   aluguel_ativo?: boolean;
   aluguel_futuro?: boolean;
@@ -270,6 +271,27 @@ function hasNome(value: unknown): value is { nome?: string } {
   return typeof value === 'object' && value !== null && 'nome' in value;
 }
 
+const imagemBaseUrl =
+  `${(process.env.R2_PUBLIC_URL || 'https://pub-a7928cc212cd43008627cd87e0ecdf91.r2.dev').replace(/\/$/, '')}/inmidia-uploads-sistema/inmidia-uploads-sistema/`;
+
+function toImagemUrl(imagem?: string | null): string | null {
+  if (typeof imagem !== 'string') {
+    return null;
+  }
+
+  const nomeArquivo = imagem.trim().replace(/^\/+/, '');
+
+  if (!nomeArquivo) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(nomeArquivo)) {
+    return nomeArquivo;
+  }
+
+  return `${imagemBaseUrl}${nomeArquivo}`;
+}
+
 // ============================================
 // TRANSFORMERS
 // ============================================
@@ -321,6 +343,7 @@ export function toListItem(placa: PlacaListSource): PlacaListItem {
     disponivel,
     ativa: typeof placa.ativa === 'boolean' ? placa.ativa : disponivel,
     imagem: placa.imagem,
+    imagem_url: toImagemUrl(placa.imagem),
     aluguel_ativo: placa.aluguel_ativo,
     aluguel_futuro: placa.aluguel_futuro,
     statusAluguel: placa.statusAluguel,

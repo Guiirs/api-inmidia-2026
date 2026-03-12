@@ -129,6 +129,9 @@ export interface IUser extends IBaseDocument {
   lastLogin?: Date;
   resetToken?: string;
   tokenExpiry?: Date;
+  // Refresh token usado para renovar JWT sem pedir login novamente
+  refreshToken?: string;
+  refreshTokenExpiry?: Date;
   empresaId: Types.ObjectId; // Alias/novo padrão
   empresa: Types.ObjectId; // Campo real no banco (tem alias no schema)
   comparePassword(candidatePassword: string): Promise<boolean>;

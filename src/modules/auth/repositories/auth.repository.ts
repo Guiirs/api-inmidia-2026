@@ -32,6 +32,21 @@ export interface IAuthRepository {
    * Atualiza senha do usuário
    */
   updatePassword(userId: string, newPassword: string): Promise<Result<void, NotFoundError>>;
+
+  /**
+   * Armazena refresh token (hash) e sua expiração
+   */
+  saveRefreshToken(userId: string, hashedToken: string, expiresAt: Date): Promise<Result<void, NotFoundError>>;
+
+  /**
+   * Busca usuário por hash de refresh token (seleciona também campos escondidos)
+   */
+  findByRefreshToken(hashedToken: string): Promise<Result<IUser | null, NotFoundError>>;
+
+  /**
+   * Limpa o refresh token de um usuário (logout/rotacao)
+   */
+  clearRefreshToken(userId: string): Promise<Result<void, NotFoundError>>;
 }
 
 export class AuthRepository implements IAuthRepository {
@@ -112,6 +127,48 @@ export class AuthRepository implements IAuthRepository {
         user.password = newPassword;
       }
       
+      await user.save();
+      return Result.ok(undefined);
+    } catch {
+      return Result.fail(new NotFoundError('Usuário', userId));
+    }
+  }
+
+  async saveRefreshToken(userId: string, hashedToken: string, expiresAt: Date): Promise<Result<void, NotFoundError>> {
+    try {
+      const user = await this.model.findById(userId).exec();
+      if (!user) {
+        return Result.fail(new NotFoundError('Usuário', userId));
+      }
+      user.refreshToken = hashedToken;
+      user.refreshTokenExpiry = expiresAt;
+      await user.save();
+      return Result.ok(undefined);
+    } catch {
+      return Result.fail(new NotFoundError('Usuário', userId));
+    }
+  }
+
+  async findByRefreshToken(hashedToken: string): Promise<Result<IUser | null, NotFoundError>> {
+    try {
+      const user = await this.model
+        .findOne({ refreshToken: hashedToken })
+        .select('+refreshToken +refreshTokenExpiry')
+        .exec();
+      return Result.ok(user);
+    } catch {
+      return Result.fail(new NotFoundError('Usuário com refresh token', hashedToken));
+    }
+  }
+
+  async clearRefreshToken(userId: string): Promise<Result<void, NotFoundError>> {
+    try {
+      const user = await this.model.findById(userId).exec();
+      if (!user) {
+        return Result.fail(new NotFoundError('Usuário', userId));
+      }
+      user.refreshToken = undefined;
+      user.refreshTokenExpiry = undefined;
       await user.save();
       return Result.ok(undefined);
     } catch {

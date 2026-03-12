@@ -1,4 +1,4 @@
-import jwt, { type JsonWebTokenError, type TokenExpiredError } from 'jsonwebtoken';
+import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import logger from '@shared/container/logger';
 import { Socket } from 'socket.io';
 
@@ -28,7 +28,9 @@ const socketAuthMiddleware = (socket: AuthSocket, next: (err?: Error) => void): 
     }
 
     // Valida o token JWT
-    const decoded = jwt.verify(String(token), process.env.JWT_SECRET!) as DecodedToken;
+    const decoded = (jwt.verify(String(token), process.env.JWT_SECRET!, {
+      clockTolerance: 45,
+    }) as unknown) as DecodedToken;
 
     // Adiciona dados do usuario ao socket
     socket.user = {

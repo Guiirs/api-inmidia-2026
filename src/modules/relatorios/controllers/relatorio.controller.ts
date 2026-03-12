@@ -36,8 +36,7 @@ export class RelatorioController {
       const result = await this.service.getDashboardSummary(empresaId.toString());
 
       if (result.isFailure) {
-        const statusCode = getErrorStatusCode(result.error);
-        res.status(statusCode).json({
+        res.status(getErrorStatusCode(result.error)).json({
           success: false,
           error: result.error.message,
           code: result.error.code,
@@ -76,8 +75,7 @@ export class RelatorioController {
       const result = await this.service.getPlacasPorRegiao(empresaId.toString());
 
       if (result.isFailure) {
-        const statusCode = getErrorStatusCode(result.error);
-        res.status(statusCode).json({
+        res.status(getErrorStatusCode(result.error)).json({
           success: false,
           error: result.error.message,
           code: result.error.code,
@@ -116,8 +114,7 @@ export class RelatorioController {
       const result = await this.service.getOcupacaoPorPeriodo(empresaId.toString(), req.query as any);
 
       if (result.isFailure) {
-        const statusCode = getErrorStatusCode(result.error);
-        res.status(statusCode).json({
+        res.status(getErrorStatusCode(result.error)).json({
           success: false,
           error: result.error.message,
           code: result.error.code,
@@ -154,7 +151,24 @@ export class RelatorioController {
         return;
       }
 
-      const parsed = PeriodoQuerySchema.safeParse(req.query);
+      const query = req.query as {
+        dataInicio?: unknown;
+        dataFim?: unknown;
+        data_inicio?: unknown;
+        data_fim?: unknown;
+      };
+      const parsed = PeriodoQuerySchema.safeParse({
+        dataInicio: typeof query.dataInicio === 'string'
+          ? query.dataInicio
+          : typeof query.data_inicio === 'string'
+            ? query.data_inicio
+            : undefined,
+        dataFim: typeof query.dataFim === 'string'
+          ? query.dataFim
+          : typeof query.data_fim === 'string'
+            ? query.data_fim
+            : undefined,
+      });
       if (!parsed.success) {
         const firstError = parsed.error.issues[0]?.message || 'Parametros invalidos';
         res.status(400).json({ message: firstError });

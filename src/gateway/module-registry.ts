@@ -63,6 +63,18 @@ export const modules: ModuleDefinition[] = [
     version: '1.0.0',
     enabled: true,
   },
+  // alias para plural; alguns clientes antigos e builds anteriores usam
+  // rota /users, portanto registramos novamente com o mesmo router para
+  // evitar 401 inesperados quando dist estiver desatualizado.
+  {
+    name: 'users-alias',
+    basePath: '/api/v1/users',
+    router: userRoutes,
+    description: 'Alias (plural) para gestão de usuários',
+    domain: 'core',
+    version: '1.0.0',
+    enabled: true,
+  },
   {
     name: 'empresas',
     basePath: '/api/v1/empresas',

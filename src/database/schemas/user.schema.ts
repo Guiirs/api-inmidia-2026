@@ -58,6 +58,11 @@ export const userSchema = new Schema<IUser>(
     },
     resetToken: String,
     tokenExpiry: Date,
+    refreshToken: {
+      type: String,
+      select: false,
+    },
+    refreshTokenExpiry: Date,
     empresa: {
       type: Schema.Types.ObjectId,
       ref: 'Empresa',

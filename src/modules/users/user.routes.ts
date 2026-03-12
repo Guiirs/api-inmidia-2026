@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
 import User from './User';
 import { UserRepository } from './repositories/user.repository';
@@ -34,17 +35,29 @@ const regenerateApiKeySchema = z.object({
   }),
 });
 
+type RouteHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => Promise<void> | void;
+
+const asyncHandler = (handler: RouteHandler) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    Promise.resolve(handler(req, res, next)).catch(next);
+  };
+};
+
 // Todas as rotas requerem autenticacao
 router.use(authenticateToken);
 
 // GET /api/v1/user/me - Perfil do Utilizador
-router.get('/me', controller.getProfile);
+router.get('/me', asyncHandler(controller.getProfile.bind(controller)));
 
 // GET /api/v1/user/me/empresa - Perfil da Empresa
-router.get('/me/empresa', controller.getEmpresaProfile);
+router.get('/me/empresa', asyncHandler(controller.getEmpresaProfile.bind(controller)));
 
 // PUT /api/v1/user/me - Atualizar Perfil do Utilizador
-router.put('/me', validate(updateProfileSchema), controller.updateProfile);
+router.put('/me', validate(updateProfileSchema), asyncHandler(controller.updateProfile.bind(controller)));
 
 // POST /api/v1/user/me/empresa/regenerate-api-key - Regenerar API Key
 router.post(
@@ -52,14 +65,14 @@ router.post(
   authRateLimiter,
   regenerateApiKeyLimiter,
   validate(regenerateApiKeySchema),
-  controller.regenerateEmpresaApiKey
+  asyncHandler(controller.regenerateEmpresaApiKey.bind(controller))
 );
 
 // Rotas refatoradas (mantidas para compatibilidade)
 // GET /api/v1/users/profile - Busca perfil do usuario
-router.get('/profile', controller.getProfile);
+router.get('/profile', asyncHandler(controller.getProfile.bind(controller)));
 
 // PATCH /api/v1/users/profile - Atualiza perfil do usuario
-router.patch('/profile', validate(updateProfileSchema), controller.updateProfile);
+router.patch('/profile', validate(updateProfileSchema), asyncHandler(controller.updateProfile.bind(controller)));
 
 export default router;

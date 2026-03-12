@@ -38,6 +38,7 @@ interface IStorageConfig {
 interface IConfig {
   jwtSecret: string;
   jwtExpiresIn: string;
+  jwtRefreshExpiresIn: string;
   port: number;
   mongoUri: string;
   nodeEnv: string;
@@ -99,6 +100,7 @@ if (
 const config: IConfig = {
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
+  jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   port: parseInt(process.env.PORT || '4000', 10),
   mongoUri: process.env.MONGODB_URI,
   nodeEnv: process.env.NODE_ENV || 'development',

@@ -108,7 +108,9 @@ function hasRequiredRole(route: ServiceRoute, req: Request): boolean {
 
 function verifyApiKeyAuth(req: Request, res: Response): Promise<void> {
   return new Promise((resolve, reject) => {
-    apiKeyAuthMiddleware(req as any, res, (error?: unknown) => {
+    // NextFunction may be invoked with any value (string, object, etc.),
+    // so keep the callback parameter loose to satisfy its signature.
+    apiKeyAuthMiddleware(req as any, res, (error?: any) => {
       if (error) {
         reject(error);
         return;
