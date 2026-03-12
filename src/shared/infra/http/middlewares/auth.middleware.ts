@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import config from '@config/config';
 import logger from '@shared/container/logger';
 import { IUserPayload } from '../../../../types/express.d';
@@ -7,7 +7,6 @@ import AppError from '@shared/container/AppError';
 
 /**
  * Middleware to authenticate JWT tokens
- * Now uses global Express.Request extension - no need for IAuthRequest
  */
 const authenticateToken = (
   req: Request,
@@ -15,41 +14,46 @@ const authenticateToken = (
   next: NextFunction
 ): void => {
   try {
-    logger.debug('[AuthMiddleware] Tentando autenticar token...');
-
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      logger.warn('[AuthMiddleware] Token de autenticação ausente na requisição.');
-      throw new AppError('Token não fornecido.', 401);
+      logger.warn('[AuthMiddleware] Token de autenticacao ausente na requisicao.');
+      throw new AppError('Token nao fornecido.', 401);
     }
 
-    jwt.verify(token, config.jwtSecret, (err, decoded) => {
-      if (err) {
-        logger.warn(
-          `[AuthMiddleware] Verificação do token falhou: ${err.message}. Status: ${err.name}`
-        );
-        throw new AppError('Token inválido ou expirado.', 403);
+    let decoded: IUserPayload;
+    try {
+      decoded = jwt.verify(token, config.jwtSecret) as IUserPayload;
+    } catch (error: unknown) {
+      if (error instanceof TokenExpiredError) {
+        logger.warn('[AuthMiddleware] Token expirado.');
+        throw new AppError('Seu token expirou. Fa�a login novamente.', 401);
       }
 
-      const user = decoded as IUserPayload;
-
-      if (!user || !user.id || !user.email) {
-        logger.error(
-          `[AuthMiddleware] Payload do token incompleto para utilizador ID: ${user?.id || 'N/A'}.`
-        );
-        throw new AppError('Token inválido (payload incompleto).', 403);
+      if (error instanceof JsonWebTokenError) {
+        logger.warn(`[AuthMiddleware] Token invalido: ${error.message}`);
+        throw new AppError('Token invalido ou expirado.', 401);
       }
 
-      req.user = user;
+      logger.error('[AuthMiddleware] Erro inesperado ao validar token.');
+      throw new AppError('Erro ao validar sessao.', 401);
+    }
 
-      logger.debug(
-        `[AuthMiddleware] Token validado para utilizador: ${req.user.email} (ID: ${req.user.id})`
+    if (!decoded || !decoded.id || !decoded.email) {
+      logger.error(
+        `[AuthMiddleware] Payload do token incompleto para utilizador ID: ${decoded?.id || 'N/A'}.`
       );
+      throw new AppError('Token invalido (payload incompleto).', 401);
+    }
 
-      next();
-    });
+    req.user = decoded;
+
+    logger.debug(
+      `[AuthMiddleware] Token validado para utilizador: ${req.user.email} (ID: ${req.user.id})`
+    );
+
+    next();
   } catch (error) {
     next(error);
   }

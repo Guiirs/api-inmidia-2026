@@ -139,16 +139,12 @@ export function gatewayMiddleware(req: Request, res: Response, next: NextFunctio
   }
 
   const runWithGatewayFlow = () => {
-    if (route.requiresAuth && !hasAuthContext(req)) {
-      res.status(401).json({
-        error: 'Unauthorized',
-        message: `Autenticacao obrigatoria para a rota ${req.path}`,
-        module: route.module,
-      });
-      return;
-    }
-
-    if (!hasRequiredRole(route, req)) {
+    if (
+      route.requiredRoles &&
+      route.requiredRoles.length > 0 &&
+      (route.requiresAuth ? hasAuthContext(req) : true) &&
+      !hasRequiredRole(route, req)
+    ) {
       res.status(403).json({
         error: 'Forbidden',
         message: `Permissao insuficiente para a rota ${req.path}`,
@@ -212,15 +208,6 @@ export function gatewayMiddleware(req: Request, res: Response, next: NextFunctio
   };
 
   const runAuthzAndRoute = () => {
-    if (route.requiresAuth && !hasAuthContext(req)) {
-      res.status(401).json({
-        error: 'Unauthorized',
-        message: `Autenticacao obrigatoria para a rota ${req.path}`,
-        module: route.module,
-      });
-      return;
-    }
-
     if (route.requiresApiKey && !hasApiKeyContext(req)) {
       res.status(401).json({
         error: 'Unauthorized',
@@ -230,7 +217,12 @@ export function gatewayMiddleware(req: Request, res: Response, next: NextFunctio
       return;
     }
 
-    if (!hasRequiredRole(route, req)) {
+    if (
+      route.requiredRoles &&
+      route.requiredRoles.length > 0 &&
+      (route.requiresAuth ? hasAuthContext(req) : true) &&
+      !hasRequiredRole(route, req)
+    ) {
       res.status(403).json({
         error: 'Forbidden',
         message: `Permissao insuficiente para a rota ${req.path}`,
