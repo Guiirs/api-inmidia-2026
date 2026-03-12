@@ -112,3 +112,25 @@ export const regenerateApiKeyLimiter = rateLimit({
     });
   },
 });
+
+export const createRouteRateLimiter = (
+  identifier: string,
+  maxRequests: number,
+  windowMs: number
+) =>
+  rateLimit({
+    windowMs,
+    max: maxRequests,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req: Request, res) => {
+      logger.warn(
+        `[RateLimit] Rota ${identifier} excedeu limite configurado (${maxRequests}/${windowMs}ms) - IP: ${req.ip}`
+      );
+      res.status(429).json({
+        message: `Muitas requisicoes para esta rota. Tente novamente em ${Math.ceil(
+          windowMs / 1000 / 60
+        )} minuto(s).`,
+      });
+    },
+  });

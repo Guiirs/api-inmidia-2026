@@ -6,30 +6,26 @@ import AppError from '@shared/container/AppError';
 
 /**
  * Autenticacao para SSE.
- * Suporta Authorization Bearer e token via query (?token=...)
- * porque EventSource nativo nao envia headers customizados.
+ * Utiliza exclusivamente Authorization Bearer por header para evitar vazamento em query string.
  */
 const sseAuthMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
   try {
     const authHeader = req.headers['authorization'];
-    const bearerToken =
+    const token =
       typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
         ? authHeader.slice(7).trim()
         : undefined;
 
-    const queryToken = typeof req.query.token === 'string' ? req.query.token : undefined;
-    const token = bearerToken || queryToken;
-
     if (!token) {
       logger.warn('[SSEAuthMiddleware] Token ausente.');
-      throw new AppError('Token não fornecido.', 401);
+      throw new AppError('Token nÃ£o fornecido.', 401);
     }
 
     const decoded = jwt.verify(token, config.jwtSecret) as any;
 
     if (!decoded || !decoded.id || !decoded.email) {
-      logger.warn('[SSEAuthMiddleware] Payload JWT inválido.');
-      throw new AppError('Token inválido (payload incompleto).', 403);
+      logger.warn('[SSEAuthMiddleware] Payload JWT invÃ¡lido.');
+      throw new AppError('Token invÃ¡lido (payload incompleto).', 403);
     }
 
     req.user = decoded;
@@ -41,7 +37,7 @@ const sseAuthMiddleware = (req: Request, _res: Response, next: NextFunction): vo
     }
 
     logger.warn(`[SSEAuthMiddleware] Falha ao verificar token: ${error.message}`);
-    next(new AppError('Token inválido ou expirado.', 403));
+    next(new AppError('Token invÃ¡lido ou expirado.', 403));
   }
 };
 

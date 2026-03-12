@@ -11,8 +11,29 @@ import AppError from '../../shared/container/AppError';
 class PublicApiService {
   constructor() {}
 
+  private readonly r2ImagemBaseUrl =
+    `${(process.env.R2_PUBLIC_URL || 'https://pub-a7928cc212cd43008627cd87e0ecdf91.r2.dev').replace(/\/$/, '')}/inmidia-uploads-sistema/inmidia-uploads-sistema/`;
+
   private escapeRegex(input: string): string {
     return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private buildImagemUrl(imagem: any): string | null {
+    if (typeof imagem !== 'string') {
+      return null;
+    }
+
+    const fileName = imagem.trim().replace(/^\/+/, '');
+
+    if (!fileName) {
+      return null;
+    }
+
+    if (/^https?:\/\//i.test(fileName)) {
+      return fileName;
+    }
+
+    return `${this.r2ImagemBaseUrl}${fileName}`;
   }
 
   private ensureEmpresaId(empresa_id: string | mongoose.Types.ObjectId): mongoose.Types.ObjectId {
@@ -36,6 +57,7 @@ class PublicApiService {
       bairro: placa.bairro || null,
       coordenadas: placa.coordenadas || null,
       imagem: placa.imagem || null,
+      imagem_url: this.buildImagemUrl(placa.imagem),
       regiao: regiaoObj
         ? {
             _id: regiaoObj._id?.toString?.() || regiaoObj.id || null,
@@ -91,6 +113,7 @@ class PublicApiService {
         nomeDaRua: placa.nomeDaRua || null,
         tamanho: placa.tamanho || null,
         imagem: placa.imagem || null,
+        imagem_url: this.buildImagemUrl(placa.imagem),
         regiao: placa.regiao?.nome || placa.regiaoId?.nome || null,
       }));
     } catch (error: any) {

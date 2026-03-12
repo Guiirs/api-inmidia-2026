@@ -8,6 +8,7 @@ import { AuthRepository } from './repositories/auth.repository';
 import { AuthService } from './services/auth.service';
 import { AuthController } from './controllers/auth.controller';
 import authenticateToken from '@middlewares/auth.middleware';
+import { authRateLimiter } from '@shared/infra/http/middlewares/rate-limit.middleware';
 
 const router = Router();
 
@@ -19,6 +20,7 @@ const controller = new AuthController(service);
 // POST /api/v1/auth/login - Login (público)
 router.post(
   '/login',
+  authRateLimiter,
   controller.login
 );
 
@@ -32,18 +34,21 @@ router.post(
 // POST /api/v1/auth/forgot-password - Solicitar reset de senha (público)
 router.post(
   '/forgot-password',
+  authRateLimiter,
   controller.forgotPassword
 );
 
 // POST /api/v1/auth/reset-password/:token - Resetar senha com token (público)
 router.post(
   '/reset-password/:token',
+  authRateLimiter,
   controller.resetPassword
 );
 
 // GET /api/v1/auth/verify-token/:token - Verificar validade do token (público)
 router.get(
   '/verify-token/:token',
+  authRateLimiter,
   controller.verifyResetToken
 );
 

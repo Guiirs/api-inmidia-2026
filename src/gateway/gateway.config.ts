@@ -1,7 +1,5 @@
 /**
  * API Gateway Configuration
- * 
- * Define o roteamento e configurações do gateway para cada módulo/subsistema
  */
 
 export interface ServiceRoute {
@@ -9,9 +7,12 @@ export interface ServiceRoute {
   target: string;
   module: string;
   requiresAuth: boolean;
+  requiresApiKey?: boolean;
+  requiredRoles?: string[];
   rateLimit?: {
     windowMs: number;
     max: number;
+    useRedisStore?: boolean;
   };
 }
 
@@ -24,37 +25,24 @@ export interface GatewayConfig {
   };
 }
 
-/**
- * Configuração de rotas do gateway
- * 
- * Em produção, cada 'target' seria a URL de um microserviço
- * Ex: http://core-service:3001, http://placas-service:3002, etc
- * 
- * Atualmente, todos apontam para 'local' pois ainda é um monolito modular
- */
 export const gatewayConfig: GatewayConfig = {
-  // Timeout padrão para requisições (30s)
   defaultTimeout: 30000,
 
-  // Circuit breaker: desabilita rota após X falhas
   circuitBreaker: {
-    threshold: 5,      // Número de falhas para abrir o circuito
-    timeout: 60000,    // Tempo para tentar reativar (1 minuto)
+    threshold: 5,
+    timeout: 60000,
   },
 
-  // Definição de rotas e seus targets
   routes: [
-    // ========================================
-    // CORE DOMAIN (Autenticação & Empresas)
-    // ========================================
+    // CORE DOMAIN (AutenticaÃ§Ã£o & Empresas)
     {
       path: '/api/v1/auth/*',
-      target: 'local',  // Futuramente: 'http://core-service:3001'
+      target: 'local',
       module: 'auth',
-      requiresAuth: false, // Login não precisa de auth
+      requiresAuth: false,
       rateLimit: {
-        windowMs: 15 * 60 * 1000, // 15 minutos
-        max: 10, // Máximo 10 tentativas de login por IP
+        windowMs: 15 * 60 * 1000,
+        max: 10,
       },
     },
     {
@@ -87,20 +75,19 @@ export const gatewayConfig: GatewayConfig = {
       path: '/api/v1/admin/*',
       target: 'local',
       module: 'admin',
-      requiresAuth: true, // Apenas admins
+      requiresAuth: true,
+      requiredRoles: ['admin', 'superadmin'],
     },
 
-    // ========================================
-    // ASSET MANAGEMENT (Placas & Regiões)
-    // ========================================
+    // ASSET MANAGEMENT (Placas & RegiÃµes)
     {
       path: '/api/v1/placas/*',
-      target: 'local',  // Futuramente: 'http://asset-service:3002'
+      target: 'local',
       module: 'placas',
       requiresAuth: true,
       rateLimit: {
         windowMs: 15 * 60 * 1000,
-        max: 500, // Alta frequência de consultas
+        max: 500,
       },
     },
     {
@@ -110,12 +97,10 @@ export const gatewayConfig: GatewayConfig = {
       requiresAuth: true,
     },
 
-    // ========================================
-    // CRM DOMAIN (Clientes & Aluguéis)
-    // ========================================
+    // CRM DOMAIN (Clientes & AluguÃ©is)
     {
       path: '/api/v1/clientes/*',
-      target: 'local',  // Futuramente: 'http://crm-service:3003'
+      target: 'local',
       module: 'clientes',
       requiresAuth: true,
     },
@@ -126,17 +111,85 @@ export const gatewayConfig: GatewayConfig = {
       requiresAuth: true,
     },
 
-    // ========================================
     // SALES & CONTRACTS (PIs & Contratos)
-    // ========================================
+    {
+      path: '/api/v1/pis/*/download',
+      target: 'local',
+      module: 'propostas-internas',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 20,
+      },
+    },
+    {
+      path: '/api/v1/pis/*/download-excel',
+      target: 'local',
+      module: 'propostas-internas',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 20,
+      },
+    },
+    {
+      path: '/api/v1/pis/*/pdf-template',
+      target: 'local',
+      module: 'propostas-internas',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 20,
+      },
+    },
     {
       path: '/api/v1/pis/*',
-      target: 'local',  // Futuramente: 'http://sales-service:3004'
+      target: 'local',
       module: 'propostas-internas',
       requiresAuth: true,
       rateLimit: {
         windowMs: 15 * 60 * 1000,
         max: 200,
+      },
+    },
+    {
+      path: '/api/v1/contratos/*/download',
+      target: 'local',
+      module: 'contratos',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 20,
+      },
+    },
+    {
+      path: '/api/v1/contratos/*/excel',
+      target: 'local',
+      module: 'contratos',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 20,
+      },
+    },
+    {
+      path: '/api/v1/contratos/*/pdf-excel',
+      target: 'local',
+      module: 'contratos',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 20,
+      },
+    },
+    {
+      path: '/api/v1/contratos/*/pdf-template',
+      target: 'local',
+      module: 'contratos',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 20,
       },
     },
     {
@@ -152,12 +205,10 @@ export const gatewayConfig: GatewayConfig = {
       requiresAuth: true,
     },
 
-    // ========================================
     // INTEGRATION LAYER (Webhooks & APIs)
-    // ========================================
     {
       path: '/api/v1/webhooks/*',
-      target: 'local',  // Futuramente: 'http://integration-service:3005'
+      target: 'local',
       module: 'webhooks',
       requiresAuth: true,
     },
@@ -165,10 +216,11 @@ export const gatewayConfig: GatewayConfig = {
       path: '/api/v1/public/*',
       target: 'local',
       module: 'public-api',
-      requiresAuth: false, // API pública usa API Key
+      requiresAuth: false,
+      requiresApiKey: true,
       rateLimit: {
         windowMs: 15 * 60 * 1000,
-        max: 1000, // Alta frequência para integrações
+        max: 1000,
       },
     },
     {
@@ -178,28 +230,44 @@ export const gatewayConfig: GatewayConfig = {
       requiresAuth: true,
     },
 
-    // ========================================
     // ANALYTICS & REPORTS
-    // ========================================
+    {
+      path: '/api/v1/relatorios/export/*',
+      target: 'local',
+      module: 'relatorios',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 20,
+      },
+    },
     {
       path: '/api/v1/relatorios/*',
-      target: 'local',  // Futuramente: 'http://analytics-service:3006'
+      target: 'local',
       module: 'relatorios',
       requiresAuth: true,
       rateLimit: {
         windowMs: 15 * 60 * 1000,
-        max: 50, // Relatórios são pesados
+        max: 50,
       },
     },
 
-    // ========================================
     // SYSTEM & HEALTH
-    // ========================================
     {
       path: '/api/v1/health',
       target: 'local',
       module: 'system',
       requiresAuth: false,
+    },
+    {
+      path: '/api/v1/queue/jobs/*/download',
+      target: 'local',
+      module: 'queue',
+      requiresAuth: true,
+      rateLimit: {
+        windowMs: 60 * 1000,
+        max: 40,
+      },
     },
     {
       path: '/api/v1/system/*',
@@ -210,9 +278,6 @@ export const gatewayConfig: GatewayConfig = {
   ],
 };
 
-/**
- * Encontra a rota correspondente para um path
- */
 export function findRoute(path: string): ServiceRoute | undefined {
   return gatewayConfig.routes.find(route => {
     const pattern = route.path.replace(/\*/g, '.*');
@@ -221,11 +286,6 @@ export function findRoute(path: string): ServiceRoute | undefined {
   });
 }
 
-/**
- * Verifica se um módulo está habilitado
- */
 export function isModuleEnabled(_moduleName: string): boolean {
-  // Em produção, isso consultaria um service registry (Consul, etcd)
-  // Por enquanto, todos os módulos estão habilitados
   return true;
 }

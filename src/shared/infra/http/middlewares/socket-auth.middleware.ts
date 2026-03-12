@@ -14,23 +14,23 @@ interface AuthSocket extends Socket {
 }
 
 /**
- * Middleware de autenticação para conexões Socket.IO
- * Valida JWT token enviado pelo cliente
+ * Middleware de autenticaÃ§Ã£o para conexÃµes Socket.IO
+ * Valida JWT token enviado pelo cliente via handshake.auth (sem query string).
  */
 const socketAuthMiddleware = (socket: AuthSocket, next: (err?: Error) => void): void => {
   try {
-    // Extrai token do handshake (pode vir em auth ou query)
-    const token = socket.handshake.auth?.token || socket.handshake.query?.token as string;
+    // Extrai token do handshake (somente auth)
+    const token = socket.handshake.auth?.token;
 
     if (!token) {
-      logger.warn('[SocketAuth] Tentativa de conexão sem token');
-      return next(new Error('Authentication error: Token não fornecido'));
+      logger.warn('[SocketAuth] Tentativa de conexÃ£o sem token');
+      return next(new Error('Authentication error: Token nÃ£o fornecido'));
     }
 
     // Valida o token JWT
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as DecodedToken;
+    const decoded = jwt.verify(String(token), process.env.JWT_SECRET!) as DecodedToken;
 
-    // Adiciona dados do usuário ao socket
+    // Adiciona dados do usuÃ¡rio ao socket
     socket.user = {
       id: decoded.id,
       empresaId: decoded.empresaId,
@@ -38,11 +38,11 @@ const socketAuthMiddleware = (socket: AuthSocket, next: (err?: Error) => void): 
       username: decoded.username,
     };
 
-    logger.info(`[SocketAuth] Usuário autenticado: ${decoded.username} (${decoded.id})`);
+    logger.info(`[SocketAuth] UsuÃ¡rio autenticado: ${decoded.username} (${decoded.id})`);
     next();
   } catch (error: any) {
-    logger.error(`[SocketAuth] Erro de autenticação: ${error.message}`);
-    next(new Error('Authentication error: Token inválido'));
+    logger.error(`[SocketAuth] Erro de autenticaÃ§Ã£o: ${error.message}`);
+    next(new Error('Authentication error: Token invÃ¡lido'));
   }
 };
 
