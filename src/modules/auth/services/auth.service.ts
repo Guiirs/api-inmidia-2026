@@ -9,6 +9,7 @@ import { Result, InvalidCredentialsError, NotFoundError, BusinessRuleViolationEr
 import config from '@config/config';
 import emailService from '@shared/container/email.service';
 import type { IAuthRepository } from '../repositories/auth.repository';
+import type { IUser } from '../../../types/models';
 import type {
   LoginInput,
   ChangePasswordInput,
@@ -19,6 +20,20 @@ import type {
 
 export class AuthService {
   constructor(private readonly repository: IAuthRepository) {}
+
+  private parseDuration(str: string): number {
+    const match = /^([0-9]+)([smhd])$/.exec(str);
+    if (!match || !match[1] || !match[2]) return 0;
+    const value = parseInt(match[1], 10);
+    const unit = match[2] as 's' | 'm' | 'h' | 'd';
+    switch (unit) {
+      case 's': return value * 1000;
+      case 'm': return value * 60 * 1000;
+      case 'h': return value * 60 * 60 * 1000;
+      case 'd': return value * 24 * 60 * 60 * 1000;
+      default: return 0;
+    }
+  }
 
   /**
    * Gera token JWT
