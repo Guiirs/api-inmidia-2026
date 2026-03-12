@@ -119,6 +119,7 @@ class PublicApiService {
         nomeDaRua: placa.nomeDaRua || null,
         tamanho: placa.tamanho || null,
         imagem: placa.imagem || null,
+        imagem_url: this.buildImagemUrl(placa.imagem),
         regiao: placa.regiao?.nome || placa.regiaoId?.nome || null,
       }));
     } catch (error: any) {
