@@ -12,7 +12,7 @@ import { ValidationMessages, FieldMessages } from '@shared/validators/validation
 /**
  * Schema para login
  */
-export const LoginSchema = z.object({
+const LoginBodySchema = z.object({
   usernameOrEmail: z
     .string()
     .min(1, ValidationMessages.required('Username ou email'))
@@ -23,10 +23,16 @@ export const LoginSchema = z.object({
     .min(1, ValidationMessages.required('Password')),
 });
 
+export const LoginSchema = z.object({
+  body: LoginBodySchema,
+  params: z.object({}).passthrough(),
+  query: z.object({}).passthrough(),
+});
+
 /**
  * Schema para alteração de senha
  */
-export const ChangePasswordSchema = z.object({
+const ChangePasswordBodySchema = z.object({
   oldPassword: z
     .string()
     .min(6, ValidationMessages.passwordMinLength(6)),
@@ -43,10 +49,16 @@ export const ChangePasswordSchema = z.object({
   }
 );
 
+export const ChangePasswordSchema = z.object({
+  body: ChangePasswordBodySchema,
+  params: z.object({}).passthrough(),
+  query: z.object({}).passthrough(),
+});
+
 /**
  * Schema para solicitar reset de senha
  */
-export const RequestPasswordResetSchema = z.object({
+const RequestPasswordResetBodySchema = z.object({
   email: z
     .string()
     .min(1, FieldMessages.email.required)
@@ -55,29 +67,43 @@ export const RequestPasswordResetSchema = z.object({
     .toLowerCase(),
 });
 
+export const RequestPasswordResetSchema = z.object({
+  body: RequestPasswordResetBodySchema,
+  params: z.object({}).passthrough(),
+  query: z.object({}).passthrough(),
+});
+
 /**
  * Schema para resetar senha com token
  */
-export const ResetPasswordSchema = z.object({
-  token: z
-    .string()
-    .min(1, ValidationMessages.required('Token')),
-  
+const ResetPasswordBodySchema = z.object({
   newPassword: z
     .string()
     .min(6, ValidationMessages.passwordMinLength(6))
     .max(100, ValidationMessages.maxLength('Nova senha', 100)),
 });
 
+const ResetPasswordParamsSchema = z.object({
+  token: z
+    .string()
+    .min(1, ValidationMessages.required('Token')),
+});
+
+export const ResetPasswordSchema = z.object({
+  body: ResetPasswordBodySchema,
+  params: ResetPasswordParamsSchema,
+  query: z.object({}).passthrough(),
+});
+
 // ============================================
 // TIPOS
 // ============================================
 
-export type LoginInput = z.infer<typeof LoginSchema>;
-export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
-export type RequestPasswordResetInput = z.infer<typeof RequestPasswordResetSchema>;
-export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
-export type RefreshInput = z.infer<typeof RefreshSchema>;
+export type LoginInput = z.infer<typeof LoginBodySchema>;
+export type ChangePasswordInput = z.infer<typeof ChangePasswordBodySchema>;
+export type RequestPasswordResetInput = z.infer<typeof RequestPasswordResetBodySchema>;
+export type ResetPasswordInput = z.infer<typeof ResetPasswordBodySchema>;
+export type RefreshInput = z.infer<typeof RefreshBodySchema>;
 
 /**
  * Payload do token JWT
@@ -124,25 +150,31 @@ export interface ChangePasswordResponse {
 // ============================================
 
 export const validateLogin = (data: unknown): LoginInput => {
-  return LoginSchema.parse(data);
+  return LoginBodySchema.parse(data);
 };
 
 export const validateChangePassword = (data: unknown): ChangePasswordInput => {
-  return ChangePasswordSchema.parse(data);
+  return ChangePasswordBodySchema.parse(data);
 };
 
 export const validateRequestPasswordReset = (data: unknown): RequestPasswordResetInput => {
-  return RequestPasswordResetSchema.parse(data);
+  return RequestPasswordResetBodySchema.parse(data);
 };
 
 export const validateResetPassword = (data: unknown): ResetPasswordInput => {
-  return ResetPasswordSchema.parse(data);
+  return ResetPasswordBodySchema.parse(data);
 };
 
-export const RefreshSchema = z.object({
+const RefreshBodySchema = z.object({
   refreshToken: z.string().min(1, ValidationMessages.required('Refresh token')),
 });
 
+export const RefreshSchema = z.object({
+  body: RefreshBodySchema,
+  params: z.object({}).passthrough(),
+  query: z.object({}).passthrough(),
+});
+
 export const validateRefresh = (data: unknown): RefreshInput => {
-  return RefreshSchema.parse(data);
+  return RefreshBodySchema.parse(data);
 };
