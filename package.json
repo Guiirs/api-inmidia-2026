@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "dist/shared/infra/http/server.js",
   "scripts": {
-    "build": "tsc && tsc-alias",
+    "build": "node --max_old_space_size=4096 ./node_modules/typescript/bin/tsc && tsc-alias",
     "prestart": "npm run build",
     "start": "cross-env NODE_ENV=production node dist/shared/infra/http/server.js",
     "dev": "cross-env NODE_ENV=development nodemon --exec ts-node src/shared/infra/http/server.ts",
