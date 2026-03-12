@@ -37,7 +37,7 @@ export class RelatorioController {
 
       if (result.isFailure) {
         const statusCode = getErrorStatusCode(result.error);
-        res.status(500).json({
+        res.status(statusCode).json({
           success: false,
           error: result.error.message,
           code: result.error.code,
@@ -219,4 +219,3 @@ export class RelatorioController {
     }
   };
 }
-

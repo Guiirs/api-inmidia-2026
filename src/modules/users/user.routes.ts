@@ -38,13 +38,13 @@ const regenerateApiKeySchema = z.object({
 router.use(authenticateToken);
 
 // GET /api/v1/user/me - Perfil do Utilizador
-router.get('/me', (req, res, next) => controller.getProfile(req, res, next));
+router.get('/me', controller.getProfile);
 
 // GET /api/v1/user/me/empresa - Perfil da Empresa
-router.get('/me/empresa', (req, res, next) => controller.getEmpresaProfile(req, res, next));
+router.get('/me/empresa', controller.getEmpresaProfile);
 
 // PUT /api/v1/user/me - Atualizar Perfil do Utilizador
-router.put('/me', validate(updateProfileSchema), (req, res, next) => controller.updateProfile(req, res, next));
+router.put('/me', validate(updateProfileSchema), controller.updateProfile);
 
 // POST /api/v1/user/me/empresa/regenerate-api-key - Regenerar API Key
 router.post(
@@ -52,14 +52,14 @@ router.post(
   authRateLimiter,
   regenerateApiKeyLimiter,
   validate(regenerateApiKeySchema),
-  (req, res, next) => controller.regenerateEmpresaApiKey(req, res, next)
+  controller.regenerateEmpresaApiKey
 );
 
 // Rotas refatoradas (mantidas para compatibilidade)
 // GET /api/v1/users/profile - Busca perfil do usuario
-router.get('/profile', (req, res, next) => controller.getProfile(req, res, next));
+router.get('/profile', controller.getProfile);
 
 // PATCH /api/v1/users/profile - Atualiza perfil do usuario
-router.patch('/profile', validate(updateProfileSchema), (req, res, next) => controller.updateProfile(req, res, next));
+router.patch('/profile', validate(updateProfileSchema), controller.updateProfile);
 
 export default router;
