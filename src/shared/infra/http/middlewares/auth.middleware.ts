@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+﻿import { Request, Response, NextFunction } from 'express';
 import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import config from '@config/config';
 import logger from '@shared/container/logger';
@@ -15,7 +15,18 @@ const authenticateToken = (
 ): void => {
   try {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const headerToken = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+    const xAccessToken = req.headers['x-access-token'];
+    const xAuthToken = req.headers['x-auth-token'];
+
+    const headerParts =
+      typeof headerToken === 'string' ? headerToken.trim().split(' ').filter(Boolean) : [];
+    const token =
+      (headerParts.length > 1
+        ? headerParts[1]
+        : headerParts[0]) ||
+      (Array.isArray(xAccessToken) ? xAccessToken[0] : xAccessToken) ||
+      (Array.isArray(xAuthToken) ? xAuthToken[0] : xAuthToken);
 
     if (!token) {
       logger.warn('[AuthMiddleware] Token de autenticacao ausente na requisicao.');
@@ -28,7 +39,7 @@ const authenticateToken = (
     } catch (error: unknown) {
       if (error instanceof TokenExpiredError) {
         logger.warn('[AuthMiddleware] Token expirado.');
-        throw new AppError('Seu token expirou. Fa�a login novamente.', 401);
+        throw new AppError('Seu token expirou. Faça login novamente.', 401);
       }
 
       if (error instanceof JsonWebTokenError) {
