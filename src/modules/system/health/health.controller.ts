@@ -84,7 +84,7 @@ export async function healthCheck(_req: Request, res: Response, _next: NextFunct
         message: 'Disabled by REDIS_ENABLED'
       };
     } else if (process.env.REDIS_HOST || process.env.REDIS_URL) {
-      // Redis estÃ¡ configurado, deve estar disponÃ­vel
+      // Redis Estão configurado, deve estar disponÃ­vel
       checks.services.redis = {
         status: redisAvailable ? 'healthy' : 'unhealthy',
         message: redisAvailable ? 'Connected' : 'Connection failed'
@@ -162,13 +162,13 @@ export async function healthCheck(_req: Request, res: Response, _next: NextFunct
 
 /**
  * Readiness Check
- * Verifica se a aplicaÃ§Ã£o estÃ¡ pronta para receber trÃ¡fego
+ * Verifica se a aplicaÃ§Ã£o Estão pronta para receber trÃ¡fego
  * 
  * GET /api/v1/ready
  */
 export async function readinessCheck(_req: Request, res: Response, _next: NextFunction): Promise<void> {
   try {
-    // Verifica se MongoDB estÃ¡ conectado
+    // Verifica se MongoDB Estão conectado
     if (mongoose.connection.readyState !== 1) {
       res.status(503).json({
         ready: false,
@@ -193,12 +193,12 @@ export async function readinessCheck(_req: Request, res: Response, _next: NextFu
 
 /**
  * Liveness Check
- * Verifica se a aplicaÃ§Ã£o estÃ¡ viva (nÃ£o travada)
+ * Verifica se a aplicaÃ§Ã£o Estão viva (nÃ£o travada)
  * 
  * GET /api/v1/live
  */
 export function livenessCheck(_req: Request, res: Response, _next: NextFunction): void {
-  // Se chegou aqui, o processo estÃ¡ vivo
+  // Se chegou aqui, o processo Estão vivo
   res.status(200).json({
     alive: true,
     timestamp: new Date().toISOString()

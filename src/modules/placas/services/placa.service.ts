@@ -7,7 +7,6 @@ import path from 'path';
 import { Result, DomainError } from '@shared/core';
 import {
   PlacaNotFoundError,
-  BusinessRuleViolationError,
   ValidationError,
   NotFoundError,
   toDomainError
@@ -28,6 +27,7 @@ import {
   type CreatePlacaDTO,
   type UpdatePlacaDTO
 } from '../dtos/placa.dto';
+import { getProximoNumeroRegiao, getProximoNumeroGlobal, reorganizarPlacas } from '@utils/numeracao';
 
 interface S3File {
   key: string;
@@ -58,7 +58,7 @@ export class PlacaService {
   async createPlaca(
     data: unknown,
     file: S3File | undefined,
-    empresaId: string
+    empresaIdParam: string
   ): Promise<Result<PlacaEntity, DomainError>> {
     try {
       const normalizedInput = this.normalizeIncomingPayload(data);
@@ -69,7 +69,7 @@ export class PlacaService {
       // Validar região
       const regiaoExists = await Regiao.findOne({ 
         _id: persistenceData.regiaoId, 
-        empresaId 
+        empresaId: empresaIdParam
       }).lean();
 
       if (!regiaoExists) {
@@ -77,6 +77,23 @@ export class PlacaService {
           new NotFoundError('Região', persistenceData.regiaoId)
         );
       }
+
+      // Calcular numeração
+      const cidade = persistenceData.cidade || regiaoExists.nome;
+      if (!cidade) {
+        return Result.fail(
+          new ValidationError([
+            { field: 'cidade', message: 'Cidade é obrigatória para numeração' }
+          ])
+        );
+      }
+      const empresaIdStr = empresaIdParam as any;
+      const numeroRegiao = await getProximoNumeroRegiao(cidade as string, empresaIdStr);
+      const numeroGlobal = await getProximoNumeroGlobal(empresaIdStr);
+
+      persistenceData.numero_regiao = numeroRegiao;
+      persistenceData.numero_global = numeroGlobal;
+      persistenceData.cidade = cidade;
 
       // Validar arquivo se fornecido
       if (file) {
@@ -88,14 +105,14 @@ export class PlacaService {
 
         Log.info('[PlacaService] Arquivo validado para imagem', {
           filename: file.originalname,
-          empresaId
+          empresaId: empresaIdParam
         });
 
         persistenceData.imagem = path.basename(file.key);
       }
 
       // Criar placa via repository
-      const result = await this.repository.create(persistenceData as CreatePlacaDTO, empresaId);
+      const result = await this.repository.create(persistenceData as CreatePlacaDTO, empresaIdParam);
 
       if (result.isFailure) {
         return Result.fail(result.error);
@@ -104,7 +121,7 @@ export class PlacaService {
       Log.info('[PlacaService] Placa criada com sucesso', {
         placaId: result.value._id,
         numeroPlaca: result.value.numero_placa,
-        empresaId
+        empresaId: empresaIdParam
       });
 
       return Result.ok(result.value);
@@ -120,7 +137,7 @@ export class PlacaService {
       const domainError = toDomainError(error);
       Log.error('[PlacaService] Erro ao criar placa', {
         error: domainError.message,
-        empresaId
+        empresaId: empresaIdParam
       });
 
       return Result.fail(domainError);
@@ -213,6 +230,28 @@ export class PlacaService {
 
       if (result.isFailure) {
         return Result.fail(result.error);
+      }
+
+      // Verificar se cidade ou região mudou e reorganizar numeração
+      const cidadeMudou = persistenceData.cidade && persistenceData.cidade !== placaExistente.cidade;
+      const regiaoMudou = persistenceData.regiaoId && 
+        persistenceData.regiaoId.toString() !== placaExistente.regiaoId.toString();
+
+      if (cidadeMudou || regiaoMudou) {
+        try {
+          await reorganizarPlacas(empresaId);
+          Log.info('[PlacaService] Numeração reorganizada após mudança de cidade/região', {
+            placaId: id,
+            empresaId
+          });
+        } catch (reorgError) {
+          Log.error('[PlacaService] Falha ao reorganizar numeração', {
+            error: toDomainError(reorgError).message,
+            placaId: id,
+            empresaId
+          });
+          // Não falhar a atualização por causa da reorganização
+        }
       }
 
       Log.info('[PlacaService] Placa atualizada com sucesso', {
@@ -331,105 +370,6 @@ export class PlacaService {
     } catch (error) {
       const domainError = toDomainError(error);
       Log.error('[PlacaService] Erro ao buscar placa', {
-        error: domainError.message,
-        placaId: id,
-        empresaId
-      });
-
-      return Result.fail(domainError);
-    }
-  }
-
-  /**
-   * Deleta placa com validações de dependências
-   */
-  async deletePlaca(
-    id: string,
-    empresaId: string
-  ): Promise<Result<void, DomainError>> {
-    try {
-      // Buscar placa existente
-      const placaResult = await this.repository.findById(id, empresaId);
-
-      if (placaResult.isFailure) {
-        return Result.fail(placaResult.error);
-      }
-
-      if (!placaResult.value) {
-        return Result.fail(new PlacaNotFoundError(id));
-      }
-
-      const placa = placaResult.value;
-
-      // Verificar se tem aluguel ativo
-      const hoje = new Date();
-      const aluguelAtivo = await Aluguel.findOne({
-        $and: [
-          {
-            $or: [
-              { placa: id },
-              { placaId: id }
-            ]
-          },
-          {
-            $or: [
-              { empresa: empresaId },
-              { empresaId: empresaId }
-            ]
-          },
-          {
-            $or: [
-              { data_inicio: { $lte: hoje } },
-              { startDate: { $lte: hoje } }
-            ]
-          },
-          {
-            $or: [
-              { data_fim: { $gte: hoje } },
-              { endDate: { $gte: hoje } }
-            ]
-          }
-        ]
-      }).lean();
-
-      if (aluguelAtivo) {
-        return Result.fail(
-          new BusinessRuleViolationError(
-            'Não é possível apagar uma placa que está atualmente alugada'
-          )
-        );
-      }
-
-      // Apagar imagem se existir
-      if (placa.imagem) {
-        const imagemKey = `placas/${placa.imagem}`;
-        try {
-          await safeDeleteFromR2(imagemKey);
-          Log.info('[PlacaService] Imagem da placa apagada', { key: imagemKey });
-        } catch (deleteError) {
-          Log.warn('[PlacaService] Falha ao apagar imagem da placa', {
-            key: imagemKey,
-            error: toDomainError(deleteError).message
-          });
-        }
-      }
-
-      // Deletar via repository
-      const deleteResult = await this.repository.delete(id, empresaId);
-
-      if (deleteResult.isFailure) {
-        return Result.fail(deleteResult.error);
-      }
-
-      Log.info('[PlacaService] Placa deletada com sucesso', {
-        placaId: id,
-        empresaId
-      });
-
-      return Result.ok(undefined);
-    } catch (error) {
-      const domainError = toDomainError(error);
-      Log.error('[PlacaService] Erro ao deletar placa', {
         error: domainError.message,
         placaId: id,
         empresaId
@@ -614,6 +554,76 @@ export class PlacaService {
     }
 
     return payload;
+  }
+
+  /**
+   * Deleta uma placa
+   */
+  async deletePlaca(
+    id: string,
+    empresaId: string
+  ): Promise<Result<void, DomainError>> {
+    try {
+      // Deletar via repository
+      const result = await this.repository.delete(id, empresaId);
+
+      if (result.isFailure) {
+        return Result.fail(result.error);
+      }
+
+      // Reorganizar numeração após deletar
+      try {
+        await reorganizarPlacas(empresaId);
+        Log.info('[PlacaService] Numeração reorganizada após deletar placa', {
+          placaId: id,
+          empresaId
+        });
+      } catch (reorgError) {
+        Log.error('[PlacaService] Falha ao reorganizar numeração após delete', {
+          error: toDomainError(reorgError).message,
+          placaId: id,
+          empresaId
+        });
+        // Não falhar o delete por causa da reorganização
+      }
+
+      Log.info('[PlacaService] Placa deletada com sucesso', {
+        placaId: id,
+        empresaId
+      });
+
+      return Result.ok(undefined);
+    } catch (error) {
+      const domainError = toDomainError(error);
+      Log.error('[PlacaService] Erro ao deletar placa', {
+        error: domainError.message,
+        placaId: id,
+        empresaId
+      });
+
+      return Result.fail(domainError);
+    }
+  }
+
+  /**
+   * Reorganiza a numeração das placas
+   */
+  async reorganizarPlacas(empresaId: string): Promise<Result<void, DomainError>> {
+    try {
+      await reorganizarPlacas(empresaId);
+
+      Log.info('[PlacaService] Numeração reorganizada com sucesso', { empresaId });
+
+      return Result.ok(undefined);
+    } catch (error) {
+      const domainError = toDomainError(error);
+      Log.error('[PlacaService] Erro ao reorganizar placas', {
+        error: domainError.message,
+        empresaId
+      });
+
+      return Result.fail(domainError);
+    }
   }
 }
 

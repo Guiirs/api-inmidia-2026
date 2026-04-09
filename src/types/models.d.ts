@@ -35,11 +35,18 @@ export interface ICliente extends IBaseDocument {
  */
 export interface IPlaca extends IBaseDocument {
   numero_placa: string;
+  numero_regiao?: number;
+  numero_global?: number;
+  codigo?: string;
+  nome_placa?: string;
+  cidade?: string;
   coordenadas?: string;
   nomeDaRua?: string;
+  localizacao?: string;
   tamanho?: string;
   imagem?: string;
   disponivel: boolean;
+  ativa?: boolean;
   regiaoId: Types.ObjectId; // Novo padrão
   empresaId: Types.ObjectId; // Novo padrão
   regiao?: Types.ObjectId | IRegiao; // Virtual/legado

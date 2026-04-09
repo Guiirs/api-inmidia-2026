@@ -474,7 +474,7 @@ Dica: O relatorio diario e enviado automaticamente todos os dias as ${process.en
                 const infoAluguel = placasAlugadasMap.get(placaId);
 
                 if (infoAluguel) {
-                    // Placa estÃ¡ alugada
+                    // Placa Estão alugada
                     alugadas.push({
                         ...placa,
                         cliente: infoAluguel.cliente,
@@ -482,8 +482,8 @@ Dica: O relatorio diario e enviado automaticamente todos os dias as ${process.en
                         data_fim: infoAluguel.data_fim
                     });
                 } else if (placa.disponivel === false) {
-                    // Placa marcada como indisponÃ­vel manualmente
-                    logger.debug(`[WhatsApp] Placa ${placa.numero_placa} marcada como indisponÃ­vel (disponivel=false)`);
+                    // Placa marcada como Indisponível manualmente
+                    logger.debug(`[WhatsApp] Placa ${placa.numero_placa} marcada como Indisponível (disponivel=false)`);
                     indisponiveis.push(placa);
                 } else {
                     // Placa disponÃ­vel para aluguel
@@ -518,7 +518,7 @@ Dica: O relatorio diario e enviado automaticamente todos os dias as ${process.en
     }
 
     /**
-     * Formata relatÃ³rio para WhatsApp (agrupado por regiÃµes - versÃ£o simplificada)
+     * Formata relatÃ³rio para WhatsApp (agrupado por Regiões - versÃ£o simplificada)
      */
     formatarMensagem(relatorio: RelatorioDisponibilidade): string {
         const { total, disponiveis, alugadas, indisponiveis } = relatorio;
@@ -626,7 +626,7 @@ Dica: O relatorio diario e enviado automaticamente todos os dias as ${process.en
     async enviarRelatorioDisponibilidade(chatId: string | null = null) {
         try {
             if (!this.isReady) {
-                logger.warn('[WhatsApp] Cliente nÃ£o estÃ¡ pronto. Ignorando envio.');
+                logger.warn('[WhatsApp] Cliente nÃ£o Estão pronto. Ignorando envio.');
                 return false;
             }
 
@@ -669,7 +669,7 @@ Dica: O relatorio diario e enviado automaticamente todos os dias as ${process.en
     async enviarMensagem(mensagem: string, chatId: string | null = null): Promise<boolean> {
         try {
             if (!this.isReady) {
-                logger.warn('[WhatsApp] Cliente nÃ£o estÃ¡ pronto.');
+                logger.warn('[WhatsApp] Cliente nÃ£o Estão pronto.');
                 return false;
             }
 
@@ -707,7 +707,7 @@ Dica: O relatorio diario e enviado automaticamente todos os dias as ${process.en
             logger.info(`[WhatsApp] Estado: isReady=${this.isReady}, groupId=${this.groupId}`);
             
             if (!this.isReady) {
-                logger.warn('[WhatsApp] âš ï¸ Cliente nÃ£o estÃ¡ pronto. NotificaÃ§Ã£o de aluguel nÃ£o enviada.');
+                logger.warn('[WhatsApp] âš ï¸ Cliente nÃ£o Estão pronto. NotificaÃ§Ã£o de aluguel nÃ£o enviada.');
                 logger.warn('[WhatsApp] Dica: Aguarde o WhatsApp inicializar completamente antes de criar aluguÃ©is.');
                 return false;
             }
@@ -902,7 +902,7 @@ Dica: O relatorio diario e enviado automaticamente todos os dias as ${process.en
             logger.info(`[WhatsApp] ðŸ“„ Enviando PDF para cliente: ${phoneNumber}`);
 
             if (!this.isReady) {
-                logger.warn('[WhatsApp] âš ï¸ Cliente nÃ£o estÃ¡ pronto. PDF nÃ£o enviado.');
+                logger.warn('[WhatsApp] âš ï¸ Cliente nÃ£o Estão pronto. PDF nÃ£o enviado.');
                 return false;
             }
 

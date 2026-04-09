@@ -10,6 +10,7 @@ import authMiddleware from '@shared/infra/http/middlewares/auth.middleware';
 import { getSingleUploadMiddleware } from '@shared/infra/http/middlewares/upload.middleware';
 import { placasCacheMiddleware } from '@shared/infra/http/middlewares/cache.middleware';
 import { CreatePlacaSchema, UpdatePlacaSchema, ListPlacasQuerySchema } from './dtos/placa.dto';
+import adminAuthMiddleware from '@shared/infra/http/middlewares/admin-auth.middleware';
 
 const router = Router();
 
@@ -127,6 +128,13 @@ router.patch(
   '/:id/disponibilidade',
   validate(idParamsSchema),
   placaController.toggleDisponibilidadeController.bind(placaController)
+);
+
+// POST /api/v1/admin/reorganizar-placas - Reorganiza numeração das placas (Admin)
+router.post(
+  '/admin/reorganizar-placas',
+  adminAuthMiddleware,
+  placaController.reorganizarPlacasController.bind(placaController)
 );
 
 logger.info('[Routes Placas] Rotas de Placas definidas com sucesso.');

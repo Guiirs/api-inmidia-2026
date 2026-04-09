@@ -59,7 +59,7 @@ function recordFailure(module: string): void {
 
   if (state.failures >= gatewayConfig.circuitBreaker.threshold) {
     state.isOpen = true;
-    logger.warn(`[Gateway] Circuit breaker aberto para mÃ³dulo: ${module}`);
+    logger.warn(`[Gateway] Circuit breaker aberto para módulo: ${module}`);
 
     if ((state as any).timeoutId) {
       clearTimeout((state as any).timeoutId);
@@ -68,7 +68,7 @@ function recordFailure(module: string): void {
     (state as any).timeoutId = setTimeout(() => {
       state.failures = 0;
       state.isOpen = false;
-      logger.info(`[Gateway] Circuit breaker fechado para mÃ³dulo: ${module}`);
+      logger.info(`[Gateway] Circuit breaker fechado para módulo: ${module}`);
     }, gatewayConfig.circuitBreaker.timeout);
   }
 }
@@ -130,10 +130,10 @@ export function gatewayMiddleware(req: Request, res: Response, next: NextFunctio
 
   const circuitState = getCircuitState(route.module);
   if (circuitState.isOpen) {
-    logger.error(`[Gateway] RequisiÃ§Ã£o bloqueada - Circuit breaker aberto para ${route.module}`);
+    logger.error(`[Gateway] Requisição bloqueada - Circuit breaker aberto para ${route.module}`);
     res.status(503).json({
       error: 'Service Unavailable',
-      message: `O mÃ³dulo ${route.module} estÃ¡ temporariamente indisponÃ­vel`,
+      message: `O módulo ${route.module} está temporariamente indisponível`,
       module: route.module,
       retryAfter: Math.ceil(gatewayConfig.circuitBreaker.timeout / 1000),
     });
@@ -149,7 +149,7 @@ export function gatewayMiddleware(req: Request, res: Response, next: NextFunctio
     ) {
       res.status(403).json({
         error: 'Forbidden',
-        message: `Permissao insuficiente para a rota ${req.path}`,
+        message: `Permissão insuficiente para a rota ${req.path}`,
         module: route.module,
       });
       return;
@@ -193,10 +193,10 @@ export function gatewayMiddleware(req: Request, res: Response, next: NextFunctio
     const timeout = setTimeout(() => {
       if (!res.headersSent) {
         recordFailure(route.module);
-        logger.error(`[Gateway] Timeout na requisiÃ§Ã£o para ${route.module}`);
+        logger.error(`[Gateway] Timeout na Requisição para ${route.module}`);
         res.status(504).json({
           error: 'Gateway Timeout',
-          message: `O mÃ³dulo ${route.module} nÃ£o respondeu a tempo`,
+          message: `O módulo ${route.module} não respondeu a tempo`,
           module: route.module,
         });
       }
@@ -213,7 +213,7 @@ export function gatewayMiddleware(req: Request, res: Response, next: NextFunctio
     if (route.requiresApiKey && !hasApiKeyContext(req)) {
       res.status(401).json({
         error: 'Unauthorized',
-        message: `API key obrigatoria para a rota ${req.path}`,
+        message: `API key obrigatória para a rota ${req.path}`,
         module: route.module,
       });
       return;
@@ -227,7 +227,7 @@ export function gatewayMiddleware(req: Request, res: Response, next: NextFunctio
     ) {
       res.status(403).json({
         error: 'Forbidden',
-        message: `Permissao insuficiente para a rota ${req.path}`,
+        message: `Permissão insuficiente para a rota ${req.path}`,
         module: route.module,
       });
       return;

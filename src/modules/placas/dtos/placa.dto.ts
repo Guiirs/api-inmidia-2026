@@ -22,6 +22,10 @@ export const CreatePlacaSchema = z.object({
   regiaoId: z.string()
     .min(1, FieldMessages.regiao.required),
   
+  cidade: z.string()
+    .max(120, ValidationMessages.maxLength('Cidade', 120))
+    .optional(),
+  
   tipo: z.enum(['busdoor', 'backbus', 'frontbus', 'empena', 'painel', 'outdoor', 'totem', 'outro'])
     .optional(),
   
@@ -141,6 +145,11 @@ export type CheckDisponibilidadeDTO = z.infer<typeof CheckDisponibilidadeSchema>
 export interface PlacaEntity {
   _id: Types.ObjectId;
   numero_placa: string;
+  numero_regiao?: number;
+  numero_global?: number;
+  codigo?: string;
+  nome_placa?: string;
+  cidade?: string;
   regiaoId: Types.ObjectId | { _id: Types.ObjectId; nome: string };
   tipo?: string;
   largura?: number;

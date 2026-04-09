@@ -89,7 +89,7 @@ export const gatewayConfig: GatewayConfig = {
       requiredRoles: ['admin', 'superadmin'],
     },
 
-    // ASSET MANAGEMENT (Placas & RegiÃµes)
+    // ASSET MANAGEMENT (Placas & Regiões)
     {
       path: '/api/v1/placas/*',
       target: 'local',

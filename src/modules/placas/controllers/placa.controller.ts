@@ -641,4 +641,65 @@ export class PlacaController {
       next(error);
     }
   }
+
+  /**
+   * Reorganiza numeração das placas
+   * POST /api/v1/admin/reorganizar-placas
+   */
+  async reorganizarPlacasController(
+    req: Request & IAuthRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          error: 'Usuário não autenticado'
+        });
+        return;
+      }
+
+      const { empresaId, id: userId, role } = req.user;
+
+      // Verificar se é admin
+      if (role !== 'admin') {
+        res.status(403).json({
+          success: false,
+          error: 'Acesso negado. Apenas administradores podem reorganizar placas.'
+        });
+        return;
+      }
+
+      Log.info('[PlacaController] Reorganizando placas', {
+        userId,
+        empresaId
+      });
+
+      const result = await this.placaService.reorganizarPlacas(empresaId);
+
+      if (result.isFailure) {
+        const statusCode = getErrorStatusCode(result.error);
+        res.status(statusCode).json({
+          success: false,
+          error: result.error.message,
+          code: result.error.code
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Numeração das placas reorganizada com sucesso'
+      });
+    } catch (error) {
+      Log.error('[PlacaController] Erro inesperado ao reorganizar placas', {
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+
+      res.status(500).json({
+        success: false,
+        error: 'Erro interno do servidor'
+      });
+    }
+  }
 }
